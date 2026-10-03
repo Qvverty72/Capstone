@@ -64,4 +64,16 @@ Juan Pablo Arriagada&#x20;
 
 ---
 
+## Levantar el sistema
+
+El código de CampusLink se encuentra en los repositorios de desarrollo correspondientes.
+
+De forma resumida:
+
+- **Backend:** configurar `.env` y ejecutar `docker compose up --build`.
+- **Frontend:** configurar `.env`, instalar dependencias y ejecutar `npx expo start -c`.
+- La aplicación Expo debe apuntar a la URL/IP donde se encuentre disponible la API.
+
+Para la configuración completa del entorno se debe consultar la documentación técnica del proyecto.
+
 **Última actualización:** Octubre de 2026
