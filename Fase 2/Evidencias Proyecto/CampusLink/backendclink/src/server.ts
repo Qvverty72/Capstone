@@ -1,0 +1,26 @@
+import 'dotenv/config';
+
+// La carga dinámica permite que los fallos de configuración y drivers usen el registro seguro.
+async function main(): Promise<void> {
+  const { startApi, stopApi } = await import('./bootstrap.js');
+  const { env } = await import('./config/env.js');
+  const server = await startApi();
+  const { startActivityNotificationWorker } = await import('./modules/activities/workers/activities.notifications.worker.js');
+  const stopNotifications = startActivityNotificationWorker();
+  const { startPhysicalgoodsReminderWorker } = await import('./modules/marketplace/physicalgoods/workers/physicalgoods.reminders.worker.js');
+  const stopPhysicalgoodsReminders = startPhysicalgoodsReminderWorker();
+  console.log('CampusLink API running on port ' + env.port);
+  let stopping = false;
+  const shutdown = async (): Promise<void> => {
+    if (stopping) return;
+    stopping = true;
+    try { await Promise.all([stopNotifications(),stopPhysicalgoodsReminders()]); await stopApi(server); }
+    catch { console.error('API shutdown failed'); process.exitCode = 1; }
+  };
+  process.once('SIGINT', () => void shutdown());
+  process.once('SIGTERM', () => void shutdown());
+}
+main().catch(() => {
+  console.error('Unable to start CampusLink API. Check environment settings and required database access.');
+  process.exit(1);
+});

@@ -1,0 +1,263 @@
+import type {
+  BuildingConfig,
+  BuildingId,
+  FloorDefinition,
+  FloorMeshConfig,
+  PointOfInterestDefinition,
+} from '@/three/types/map';
+
+
+const API_BASE_URL = (
+  process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000'
+).replace(/\/+$/, '');
+
+type Vector3 = [number, number, number];
+type ApiVector3 = string | number[];
+
+interface ApiFloor {
+  id: string;
+  level: number;
+  meshName: string;
+  name: string;
+  description: string;
+  transform: {
+    position: ApiVector3;
+    rotation: ApiVector3;
+    scale: ApiVector3;
+  };
+  subMeshes: string[];
+  pois?: PointOfInterestDefinition[];
+}
+
+interface ApiBuilding {
+  id: string;
+  name: string;
+  focusTarget: number[];
+  focusPosition: number[];
+  floors: ApiFloor[];
+}
+
+interface ActiveCampusMapResponse {
+  _id: string;
+  version: number;
+  campusId: string;
+  status: 'ACTIVE';
+  buildings: ApiBuilding[];
+}
+
+interface ApiSuccessResponse<T> {
+  data: T;
+  meta?: Record<string, unknown>;
+}
+
+interface ApiErrorDetail {
+  field: string;
+  message: string;
+}
+
+interface ApiErrorResponse {
+  error: {
+    code: string;
+    message: string;
+    details?: ApiErrorDetail[];
+  };
+}
+
+/** Error HTTP con el estado y código del contrato de errores de la API. */
+export class ApiClientError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+    message: string,
+    readonly details?: ApiErrorDetail[],
+  ) {
+    super(message);
+    this.name = 'ApiClientError';
+  }
+}
+
+/** Vista cliente del mapa activo, enlazada con nodos locales del GLB. */
+export interface RuntimeMapData {
+  campusId: string;
+  version: number;
+  buildingFloors: Record<BuildingId, string[]>;
+  buildingConfigs: Record<BuildingId, BuildingConfig>;
+  floorMeshConfigs: FloorMeshConfig[];
+  floorData: Record<string, FloorDefinition>;
+}
+
+/** Comprueba la forma mínima de error que el cliente sabe mostrar. */
+function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
+  if (typeof value !== 'object' || value === null || !('error' in value)) {
+    return false;
+  }
+
+  const error = value.error;
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof error.code === 'string' &&
+    'message' in error &&
+    typeof error.message === 'string'
+  );
+}
+
+/** Convierte el sobre HTTP de error y conserva una alternativa para respuestas no JSON. */
+async function toApiClientError(response: Response): Promise<ApiClientError> {
+  try {
+    const payload: unknown = await response.json();
+    if (isApiErrorResponse(payload)) {
+      return new ApiClientError(
+        response.status,
+        payload.error.code,
+        payload.error.message,
+        payload.error.details,
+      );
+    }
+  } catch {
+    // Conserva un error estable si un proxy o una versión antigua no devuelve JSON.
+  }
+
+  return new ApiClientError(
+    response.status,
+    'UNKNOWN_API_ERROR',
+    `Request failed with status ${response.status}.`,
+  );
+}
+
+// El documento activo serializa vectores como arreglos; mapas antiguos o editados
+// manualmente también pueden representarlos como tres valores separados por espacios.
+/** Valida un vector recibido por API y normaliza ambas representaciones admitidas. */
+function parseVector3(value: ApiVector3, fieldName: string): Vector3 {
+  const values = typeof value === 'string'
+    ? value.trim().split(/\s+/).map(Number)
+    : value;
+
+  if (
+    values.length !== 3 ||
+    values.some((component) => !Number.isFinite(component))
+  ) {
+    throw new Error(`Invalid Vector3 received for ${fieldName}`);
+  }
+
+  return [values[0], values[1], values[2]];
+}
+
+/**
+ * Solicita el mapa ACTIVE del campus con el token de la sesión actual y adapta su
+ * contrato al índice de edificios, pisos y nodos que consume Three.js.
+ * Rechaza campus no UUID, respuestas de otro campus y vectores inválidos; admite
+ * cancelación por `signal` y no almacena el token ni el documento recibido.
+ */
+export async function fetchActiveCampusMap(campusId: string, accessToken: string, signal?: AbortSignal): Promise<RuntimeMapData> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(campusId)) throw new Error('Invalid campus');
+  if (!accessToken?.trim()) throw new ApiClientError(401, 'UNAUTHENTICATED', 'Inicia sesión para consultar el mapa.');
+  // El token proviene de la sesión actual del SDK, nunca de datos persistidos del mapa.
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/maps/${campusId}/active`, {
+      signal, headers: { Authorization: 'Bearer ' + accessToken }, cache: 'no-store', redirect: 'error',
+    }
+  );
+
+  if (!response.ok) {
+    throw await toApiClientError(response);
+  }
+
+  const envelope = (await response.json()) as ApiSuccessResponse<ActiveCampusMapResponse>;
+  const map = envelope.data;
+  if (map.campusId.toLowerCase() !== campusId.toLowerCase()) throw new Error('El mapa recibido no corresponde a tu campus.');
+
+  const buildingFloors = {} as Record<BuildingId, string[]>;
+  const buildingConfigs = {} as Record<BuildingId, BuildingConfig>;
+  const floorData: Record<string, FloorDefinition> = {};
+  const floorMeshConfigs: FloorMeshConfig[] = [];
+
+  for (const building of map.buildings) {
+    const buildingId = building.id as BuildingId;
+
+    buildingFloors[buildingId] = building.floors.map(
+      (floor) => floor.meshName
+    );
+
+    buildingConfigs[buildingId] = {
+      id: buildingId,
+      name: building.name,
+      floors: buildingFloors[buildingId],
+      focusTarget: parseVector3(building.focusTarget, 'focusTarget'),
+      focusPosition: parseVector3(building.focusPosition, 'focusPosition'),
+    };
+
+    for (const floor of building.floors) {
+      const position = parseVector3(
+        floor.transform.position,
+        `${floor.meshName}.transform.position`
+      );
+      const rotation = parseVector3(
+        floor.transform.rotation,
+        `${floor.meshName}.transform.rotation`
+      );
+      const scaleVector = parseVector3(
+        floor.transform.scale,
+        `${floor.meshName}.transform.scale`
+      );
+
+      const scale =
+        scaleVector[0] === scaleVector[1] &&
+        scaleVector[1] === scaleVector[2]
+          ? scaleVector[0]
+          : scaleVector;
+
+      floorMeshConfigs.push({
+        meshName: floor.meshName,
+        buildingId,
+        position,
+        rotation,
+        scale,
+        subMeshes: floor.subMeshes,
+      });
+
+      floorData[floor.meshName] = {
+        id: floor.id,
+        buildingId,
+        level: floor.level,
+        meshName: floor.meshName,
+        name: floor.name,
+        description: floor.description,
+        // Solo los puntos vigentes de este piso llegan a la consulta del modal.
+        pois: (floor.pois ?? [])
+          .filter((poi) => poi.isVisible === true && !poi.deletedAt)
+          .map((poi) => {
+            const [x, y, z] = parseVector3(
+              [poi.position.x, poi.position.y, poi.position.z],
+              `${floor.meshName}.pois.${poi.poiKey}.position`
+            );
+
+            return {
+              poiKey: poi.poiKey,
+              name: poi.name,
+              type: poi.type,
+              icon: poi.icon,
+              description: poi.description,
+              imageKeys: Array.isArray(poi.imageKeys)
+                ? [...new Set(poi.imageKeys.filter((key): key is string => typeof key === 'string')
+                  .map(key => key.trim()).filter(Boolean))]
+                : [],
+              position: { x, y, z },
+              isFixed: poi.isFixed,
+              isVisible: poi.isVisible,
+            };
+          }),
+      };
+    }
+  }
+
+  return {
+    campusId: map.campusId,
+    version: map.version,
+    buildingFloors,
+    buildingConfigs,
+    floorMeshConfigs,
+    floorData,
+  };
+}
