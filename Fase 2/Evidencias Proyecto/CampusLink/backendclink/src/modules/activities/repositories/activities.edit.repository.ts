@@ -33,7 +33,7 @@ export async function commitActivityEdit(auth: VerifiedAuthConnection, activityI
       findEditable: (campusId, id) => transactionDb.collection<ActivityDocument>('activities').findOne({ campusId, _id: new ObjectId(id),
         status: { $in: ['ACTIVE', 'FINISHED'] }, visibility: 'PUBLIC', deletedAt: null }, { session }),
     });
-    if (plan.previewHash !== input.previewHash) throw new ApiError(409, 'CONFLICT', 'Las actividades cambiaron. Revisa una nueva vista previa.');
+    if (plan.previewHash !== input.previewHash) throw new ApiError(409, 'CONFLICT', 'La actividad cambió mientras la editabas. Vuelve a la ficha y abre la edición nuevamente para revisar su estado actual.');
     const changed = plan.changes.filter(value => value.changedFields.length);
     const reactivatingCommunity = !accountCapabilities(auth).officialActivities && changed.some(change =>
       change.before.type === 'COMMUNITY_ACTIVITY' && (change.before.status === 'FINISHED' || change.before.endAt <= transactionNow)

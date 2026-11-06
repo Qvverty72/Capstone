@@ -2,7 +2,7 @@ import { getMongoDB as getMongoDb } from '../../../database/mongodb/client.js';
 import { mongoClient } from '../../../database/mongodb/client.js';
 import { ApiError } from '../../../shared/errors/api-error.js';
 import type { CampusMapDocument } from '../../maps/types/map.types.js';
-import { spatialBuildings } from '../domain/activities.location.js';
+import { activityLocationErrorMessage, spatialBuildings } from '../domain/activities.location.js';
 import { toVisibleActivity, activeCommunityActivityFilter, COMMUNITY_ACTIVITY_LIMIT_MESSAGE } from '../domain/activities.policy.js';
 import { requireParticipationIndex } from './activities.participation-index.js';
 import { publicationNotifications } from '../domain/activities.notifications.js';
@@ -29,7 +29,10 @@ export async function insertActivity(document: ActivityDocument, options: Activi
         { $inc: { communityActivityCreationRevision: 1 } }, { session, returnDocument: 'after' })
       : await maps.findOne({ campusId: document.campusId, status: 'ACTIVE' }, { session });
     const activity = map && toVisibleActivity(document, document.campusId, now, spatialBuildings(map));
-    if (!activity) throw new ApiError(400, 'VALIDATION_ERROR', 'Activity dates or location are no longer available.');
+    if (!activity) throw new ApiError(400, 'VALIDATION_ERROR', !map
+      ? 'El mapa de tu campus ya no está disponible. Vuelve al mapa y actualízalo antes de publicar.'
+      : document.endAt <= now ? 'La actividad terminó mientras la publicabas. Cambia la fecha y hora de término por unas posteriores al momento actual.'
+        : activityLocationErrorMessage(spatialBuildings(map), document.location));
     if (limited && await db.collection<ActivityDocument>('activities').findOne(
       activeCommunityActivityFilter(document.campusId, document.createdByUserId, now), { session })) {
       throw new ApiError(409, 'CONFLICT', COMMUNITY_ACTIVITY_LIMIT_MESSAGE);

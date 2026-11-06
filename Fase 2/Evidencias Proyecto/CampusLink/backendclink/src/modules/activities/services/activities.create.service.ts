@@ -3,7 +3,7 @@ import { ApiError } from '../../../shared/errors/api-error.js';
 import type { VerifiedAuthConnection } from '../../auth/types/auth.types.js';
 import { requireCampusCapability, accountCapabilities } from '../../auth/domain/auth.authorization.js';
 import { getAuthorizedActiveMap } from '../../maps/public.js';
-import { resolveActivityLocation, spatialBuildings } from '../domain/activities.location.js';
+import { activityLocationErrorMessage, resolveActivityLocation, spatialBuildings } from '../domain/activities.location.js';
 import type { ActivityDependencies } from './activities.service.js';
 import type { ActivityDetailDto, ActivityDocument, ActivityType, CreateActivityInput } from '../types/activities.types.js';
 import type { CommunityActivityCreationAvailability } from '../types/activities.types.js';
@@ -46,9 +46,11 @@ export async function prepareActivityDocument(auth: VerifiedAuthConnection, inpu
     if (!auth.profile.nombre_completo.trim()) throw new ApiError(503, 'DEPENDENCY_UNAVAILABLE', 'The organizer profile is unavailable.');
   }
   const map = await getAuthorizedActiveMap(auth, auth.campusId, dependencies.getActiveMap);
-  if (!resolveActivityLocation(spatialBuildings(map), input.location)) throw new ApiError(400, 'VALIDATION_ERROR', 'Select an active location in your campus.');
+  const buildings = spatialBuildings(map);
+  if (!resolveActivityLocation(buildings, input.location)) throw new ApiError(400, 'VALIDATION_ERROR', activityLocationErrorMessage(buildings, input.location));
   const now = dependencies.now?.() ?? new Date();
-  if (input.endAt <= input.startAt || input.endAt <= now) throw new ApiError(400, 'VALIDATION_ERROR', 'Activity must end after start and still be current.');
+  if (input.endAt <= input.startAt) throw new ApiError(400, 'VALIDATION_ERROR', 'La fecha y hora de término deben ser posteriores al inicio. Si termina al día siguiente, cambia también la fecha de término.');
+  if (input.endAt <= now) throw new ApiError(400, 'VALIDATION_ERROR', 'La actividad ya terminó. Elige una fecha y hora de término posteriores al momento actual para poder publicarla.');
   return {
     _id: new ObjectId(), campusId: auth.campusId, createdByUserId: auth.userId,
     title: input.title, description: input.description, startAt: input.startAt, endAt: input.endAt,

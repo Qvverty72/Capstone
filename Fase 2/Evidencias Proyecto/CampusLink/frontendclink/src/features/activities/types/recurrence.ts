@@ -73,15 +73,20 @@ export function activityCalendarDate(text: string): string | null {
 export function recurrenceDraftRule(frequency: ActivityRecurrenceRule['frequency'], intervalText: string, untilText: string,
   exclusionsText: string, timeZone: string, weekdays?: number[]): { rule: ActivityRecurrenceRule; error?: never } | { error: string; rule?: never } {
   const until = activityCalendarDate(untilText); const interval = Number(intervalText);
-  if (!/^[0-9]{1,2}$/.test(intervalText) || !Number.isInteger(interval) || interval < 1 || interval > 52) return { error: 'El intervalo debe estar entre 1 y 52.' };
-  if (!until) return { error: 'Completa la fecha final con DD/MM/AAAA.' };
-  if (!timeZone) return { error: 'No se pudo identificar la zona horaria del dispositivo.' };
+  if (!/^[0-9]{1,2}$/.test(intervalText) || !Number.isInteger(interval) || interval < 1 || interval > 52) return { error: 'El intervalo de repetición debe ser un número entero entre 1 y 52. No uses decimales, letras ni valores fuera de ese rango.' };
+  if (!untilText.trim()) return { error: 'Falta indicar hasta cuándo se repite la actividad. Selecciona la fecha en «¿Hasta cuándo?».' };
+  if (!until) return { error: 'La fecha de «¿Hasta cuándo?» no es válida. Selecciona una fecha que exista en el calendario, con formato DD/MM/AAAA.' };
+  if (!timeZone) return { error: 'No se pudo identificar la zona horaria. Revisa la configuración de fecha y hora de tu dispositivo y vuelve a abrir el formulario.' };
   if (weekdays !== undefined && (frequency !== 'WEEKLY' || weekdays.length < 1 || weekdays.length > 7
     || weekdays.some(day => !Number.isInteger(day) || day < 1 || day > 7) || new Set(weekdays).size !== weekdays.length)) {
-    return { error: 'Selecciona al menos un día de la semana, sin repetir días.' };
+    return { error: 'La repetición semanal necesita al menos un día de la semana. Selecciona los días en que se realizará la actividad, sin repetirlos.' };
   }
-  const dates = exclusionsText.trim() ? exclusionsText.split(/[,\n]/).map(value => activityCalendarDate(value)) : [];
-  if (dates.some(value => !value) || dates.length > 200 || new Set(dates).size !== dates.length) return { error: 'Las exclusiones deben ser fechas válidas distintas, separadas por comas.' };
+  const exclusions = exclusionsText.trim() ? exclusionsText.split(/[,\n]/) : [];
+  const dates = exclusions.map(value => activityCalendarDate(value));
+  const invalid = dates.findIndex(value => !value);
+  if (invalid >= 0) return { error: `La fecha a omitir número ${invalid + 1} no es válida. Usa DD/MM/AAAA y separa las fechas con comas, sin dejar elementos vacíos.` };
+  if (dates.length > 200) return { error: `Ingresaste ${dates.length} fechas a omitir y el máximo es 200. Elimina las que exceden ese límite.` };
+  if (new Set(dates).size !== dates.length) return { error: 'Hay fechas repetidas en la lista de fechas a omitir. Deja cada fecha una sola vez.' };
   return { rule: { frequency, interval, until, timeZone, excludedDates: (dates as string[]).sort(),
     ...(weekdays !== undefined ? { weekdays: [...weekdays].sort((a, b) => a - b) } : {}) } };
 }

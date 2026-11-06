@@ -187,6 +187,14 @@ test('HTTP creation requires identity, rejects overrides, returns 201 JOINED wit
       assert.equal((await originalFetch(url, { method: 'POST', headers, body: JSON.stringify({ ...body(), [key]: 'override' }) })).status, 400);
     }
     assert.equal((await originalFetch(url + '?campusId=' + userId, { method: 'POST', headers, body: JSON.stringify(body()) })).status, 400);
+    const invalid = await originalFetch(url, { method: 'POST', headers,
+      body: JSON.stringify({ ...body(), title: ' ', description: 'x'.repeat(2001), endAt: body().startAt }) });
+    assert.equal(invalid.status, 400);
+    const rejected = (await invalid.json()).error;
+    assert.equal(rejected.code, 'VALIDATION_ERROR');
+    assert.match(rejected.details.find((issue: { field: string }) => issue.field === 'title').message, /nombre.*blanco.*espacios/);
+    assert.match(rejected.details.find((issue: { field: string }) => issue.field === 'description').message, /2001.*2000.*Acorta/);
+    assert.match(rejected.details.find((issue: { field: string }) => issue.field === 'endAt').message, /posteriores al inicio/);
     assert.equal(writes, 0);
     const response = await originalFetch(url, { method: 'POST', headers, body: JSON.stringify(body()) });
     assert.equal(response.status, 201); assert.equal(response.headers.get('cache-control'), 'no-store');
@@ -209,4 +217,78 @@ test('form validates local calendar/time, content bounds, chronology and POI hie
   for (const patch of [{ endTime: '11:00' }, { title: 'x'.repeat(121) }, { description: '' }, { floorKey: 'hbuilding_floor2' },
     { poiKey: 'hidden' }, { buildingKey: 'other-campus' }]) assert.ok(validateActivityDraft({ ...draft, ...patch }, locations, 0).error);
   assert.ok(validateActivityDraft(draft, locations, Date.parse('2100-01-01T00:00:00Z')).error);
+});
+
+test('form errors identify the invalid field, its cause and how to correct it without changing valid input', () => {
+  const locations = [{ id: 'hbuilding', name: 'H', floors: [{ id: 'floor-two', name: 'Piso 2', pois: [{ id: 'sala', name: 'Sala' }] }] }];
+  const draft = { title: 'Taller', description: 'Descripción', startDate: '11/10/2099', startTime: '12:00',
+    endDate: '11/10/2099', endTime: '13:00', ...body().location, poiKey: '', customLabel: '' };
+  const cases: [Partial<typeof draft>, RegExp][] = [
+    [{ title: '   ' }, /nombre.*vacío.*Escribe.*espacios/],
+    [{ title: 'x'.repeat(121) }, /nombre.*121.*120.*Acorta/],
+    [{ title: 'Nombre\npegado' }, /nombre.*sola línea.*Elimina/],
+    [{ description: ' ' }, /descripción.*vacía.*Escribe/],
+    [{ description: 'x'.repeat(2001) }, /descripción.*2001.*2000.*Acorta/],
+    [{ description: 'Texto\u0000oculto' }, /descripción.*invisibles.*Elimínalos/],
+    [{ customLabel: 'x'.repeat(161) }, /referencia.*161.*160.*Acorta/],
+    [{ customLabel: 'Referencia\tpegada' }, /referencia.*sola línea.*Elimina/],
+    [{ startDate: '' }, /Falta la fecha de inicio.*calendario/],
+    [{ startTime: '' }, /Falta la hora de inicio.*selector/],
+    [{ endDate: '' }, /Falta la fecha de término.*calendario/],
+    [{ endTime: '' }, /Falta la hora de término.*selector/],
+    [{ startDate: '2099-10-11' }, /fecha de inicio.*DD\/MM\/AAAA.*seleccionarla/],
+    [{ endDate: '30/02/2099' }, /fecha de término.*no existe.*selecciona/],
+    [{ startTime: '24:00' }, /hora de inicio.*00:00.*23:59/],
+    [{ endTime: '13:60' }, /hora de término.*00:00.*23:59/],
+    [{ endTime: '12:00' }, /misma fecha y hora.*posterior/],
+    [{ endTime: '11:00' }, /término.*anteriores.*día siguiente/],
+    [{ buildingKey: '' }, /Falta el edificio.*Selecciona/],
+    [{ buildingKey: 'other-campus' }, /edificio.*no está disponible.*Vuelve al mapa/],
+    [{ floorKey: '' }, /Falta el piso.*Selecciona/],
+    [{ floorKey: 'other-floor' }, /piso.*no está disponible.*Vuelve al mapa/],
+    [{ poiKey: 'hidden' }, /punto de interés.*no está disponible.*opcional/],
+  ];
+  for (const [patch, expected] of cases) {
+    const result = validateActivityDraft({ ...draft, ...patch }, locations, 0);
+    assert.equal(result.input, undefined);
+    assert.match(result.error!, expected);
+  }
+  const afterEnd = Date.parse('2100-01-01T00:00:00Z');
+  assert.match(validateActivityDraft(draft, locations, afterEnd).error!, /ya terminó.*posteriores.*inicio puede estar en el pasado/);
+  assert.ok(validateActivityDraft(draft, locations, afterEnd, { allowEnded: true }).input);
+  assert.ok(validateActivityDraft({ ...draft, description: 'Descripción\ncon saltos\ty tabulaciones',
+    startDate: '10/10/2099', endDate: '12/10/2099', endTime: '01:00' }, locations, new Date(2099, 9, 11).getTime()).input);
+});
+
+test('server validation distinguishes content errors and returns the location field that must be corrected', () => {
+  const cases: [Record<string, unknown>, string, RegExp][] = [
+    [{ title: '' }, 'title', /nombre.*blanco/],
+    [{ title: 123 }, 'title', /nombre.*texto/],
+    [{ title: 'x'.repeat(121) }, 'title', /nombre.*121.*120/],
+    [{ title: 'Nombre\npegado' }, 'title', /nombre.*sola línea/],
+    [{ description: '\u0000texto' }, 'description', /descripción.*invisibles/],
+    [{ endAt: '2099-02-30T12:00:00.000Z' }, 'endAt', /término.*no es válida.*seleccionar/],
+    [{ location: { ...body().location, customLabel: 'x'.repeat(161) } }, 'location.customLabel', /referencia.*161.*160/],
+    [{ location: { buildingKey: '' } }, 'location.buildingKey', /edificio.*Selecciona/],
+    [{ location: { buildingKey: 'hbuilding' } }, 'location.floorKey', /piso.*Selecciona/],
+    [{ location: { ...body().location, poiKey: 123 } }, 'location.poiKey', /punto de interés.*opcional/],
+  ];
+  for (const [patch, field, expected] of cases) {
+    const result = parseCreateActivity({ ...body(), ...patch });
+    assert.equal(result.success, false);
+    if (!result.success) assert.match(result.issues.find(issue => issue.field === field)!.message, expected);
+  }
+});
+
+test('server revalidation explains the unavailable location level and expiry without writing', async () => {
+  const dependencies = { getActiveMap: async () => map, now: () => now,
+    createActivity: async () => { throw new Error('Must not write invalid activity'); } };
+  for (const [location, expected] of [
+    [{ buildingKey: 'missing', floorKey: 'floor-two' }, /edificio.*Vuelve al mapa/],
+    [{ ...body().location, floorKey: 'floor-missing' }, /piso.*selecciona/],
+    [{ ...body().location, poiKey: 'hidden' }, /punto de interés.*opcional/],
+  ] as const) await assert.rejects(createCommunityActivity(auth, parsed({ ...body(), location }), dependencies), error => {
+    assert.equal((error as { status: number }).status, 400); assert.match((error as Error).message, expected); return true;
+  });
+  await assert.rejects(createCommunityActivity(auth, parsed({ ...body(), startAt: '2099-10-09T10:00:00.000Z', endAt: now.toISOString() }), dependencies), /ya terminó.*posteriores/);
 });

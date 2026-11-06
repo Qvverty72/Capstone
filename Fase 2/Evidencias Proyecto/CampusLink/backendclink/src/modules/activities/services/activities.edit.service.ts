@@ -4,14 +4,14 @@ import type { VerifiedAuthConnection } from '../../auth/types/auth.types.js';
 import { requireResourceOwner } from '../../auth/domain/auth.authorization.js';
 import { getAuthorizedActiveMap } from '../../maps/public.js';
 import { ApiError } from '../../../shared/errors/api-error.js';
-import { resolveActivityLocation, spatialBuildings } from '../domain/activities.location.js';
+import { activityLocationErrorMessage, resolveActivityLocation, spatialBuildings } from '../domain/activities.location.js';
 import type { ActivityDocument } from '../types/activities.types.js';
 import type { ActivityEditDependencies, ActivityEditPreview, ActivityEditResult, ActivitySnapshot, EditActivityInput } from '../types/activities.edit.types.js';
 
 export const editRevision = (document: ActivityDocument): number => document.editRevision === undefined ? 0 : document.editRevision;
 const snapshot = (document: ActivityDocument): ActivitySnapshot => ({ title: document.title, description: document.description,
   type: document.type, status: document.status, startAt: document.startAt, endAt: document.endAt, location: document.location as ActivitySnapshot['location'] });
-const conflict = () => new ApiError(409, 'CONFLICT', 'La actividad o las ocurrencias cambiaron. Recarga la ficha y revisa una nueva vista previa.');
+const conflict = () => new ApiError(409, 'CONFLICT', 'La actividad cambió mientras la editabas. Vuelve a la ficha y abre la edición nuevamente para revisar su estado actual.');
 const valid = (document: ActivityDocument) => document._id?.toHexString?.() && document.startAt instanceof Date && document.endAt instanceof Date
   && Number.isFinite(document.startAt.getTime()) && Number.isFinite(document.endAt.getTime()) && document.endAt > document.startAt
   && Number.isSafeInteger(editRevision(document)) && editRevision(document) >= 0 && editRevision(document) < Number.MAX_SAFE_INTEGER;
@@ -40,8 +40,9 @@ export async function previewActivityEdit(auth: VerifiedAuthConnection, activity
     throw new ApiError(503, 'DEPENDENCY_UNAVAILABLE', 'La identidad de la ocurrencia no está disponible.');
   }
   if (editRevision(current) !== input.expectedRevision) throw conflict();
-  if (input.endAt <= input.startAt) throw new ApiError(400, 'VALIDATION_ERROR', 'El término debe ser posterior al inicio.');
-  if (!resolveActivityLocation(spatialBuildings(map), input.location)) throw new ApiError(400, 'VALIDATION_ERROR', 'Selecciona una ubicación activa de tu campus.');
+  if (input.endAt <= input.startAt) throw new ApiError(400, 'VALIDATION_ERROR', 'La fecha y hora de término deben ser posteriores al inicio. Si termina al día siguiente, cambia también la fecha de término.');
+  const buildings = spatialBuildings(map);
+  if (!resolveActivityLocation(buildings, input.location)) throw new ApiError(400, 'VALIDATION_ERROR', activityLocationErrorMessage(buildings, input.location));
   const now = dependencies.now?.() ?? new Date();
   const changes = [current].map(document => {
     const before = snapshot(document);

@@ -8,6 +8,7 @@ import type { ActivityDetail, ActivityLocationQuery } from '../types/activity';
 import { isActivityDescriptionAllowed, validateActivityDraft, type ActivityLocationOption, type ActivityDraft, type CommunityActivityCreationAvailability } from '../types/creation';
 import { ActivityFields } from './ActivityFields';
 import { ActivityRecurrencePicker } from './ActivityRecurrencePicker';
+import { activityFormErrorMessage } from '../api/activityFormErrors';
 import { recurrenceDraftRule, type ActivityRecurrenceDraft, type ActivityRecurrencePreview } from '../types/recurrence';
 
 /** Valida el borrador y, en series, exige una vista previa del servidor antes de publicar. */
@@ -67,12 +68,12 @@ export function CreateActivityForm({ locations, initialLocation, onCreated, offi
     if (request.current || !identity) return;
     if (requiresAvailability && !availability?.canCreate) return;
     if (recurring && !canCreateRecurring) { setError('Necesitas permiso para publicar eventos oficiales en tu campus para crear una serie.'); return; }
-    if (!isActivityDescriptionAllowed(draft.description, allowCustomDescription)) { setError('Selecciona una descripción para la actividad.'); return; }
+    if (!isActivityDescriptionAllowed(draft.description, allowCustomDescription)) { setError('Falta elegir una descripción de la lista. Selecciona la opción que mejor describa tu actividad, por ejemplo, «Grupo de estudio» o «Taller».'); return; }
     const parsed = validateActivityDraft(draft, locations);
     if (parsed.error) { setError(parsed.error); return; }
     const recurrence = recurring ? recurrenceDraftRule(frequency, interval, until, excludedDates, timeZone, weekdays) : null;
     if (recurrence?.error) { setError(recurrence.error); return; }
-    if (recurring && !previewOnly && !preview) { setError('Revisa las fechas de la vista previa antes de publicar.'); return; }
+    if (recurring && !previewOnly && !preview) { setError('Las fechas de la serie aún no están revisadas o cambiaron los datos. Pulsa «Ver fechas antes de publicar» para generar una vista previa actualizada.'); return; }
     const abort = new AbortController(); request.current = abort;
     setSubmitting(true); setError(null);
     try {
@@ -93,11 +94,13 @@ export function CreateActivityForm({ locations, initialLocation, onCreated, offi
       if (abort.signal.aborted) return;
       if (reason instanceof AuthApiError && [400, 409].includes(reason.status)) setPreview(null);
       setError(reason instanceof AuthApiError && [400, 409].includes(reason.status)
-        ? reason.serverMessage ?? 'Revisa las fechas y la ubicación: deben seguir vigentes. Si el lugar cambió, vuelve a abrir el mapa.'
-        : reason instanceof AuthApiError && [401, 403].includes(reason.status)
-          ? official || recurring ? 'Necesitas una cuenta activa y permiso para publicar eventos oficiales en tu campus.'
-            : 'Necesitas una cuenta institucional verificada y activa para publicar.'
-          : previewOnly ? 'No se pudo generar la vista previa. Reintenta.'
+        ? activityFormErrorMessage(reason, 'No se pudieron validar los datos de la actividad. Comprueba que el término sea posterior al inicio y al momento actual, y que el edificio, piso y punto de interés sigan disponibles en el mapa.')
+        : reason instanceof AuthApiError && reason.status === 401 ? 'Tu sesión venció. Vuelve a iniciar sesión para publicar la actividad.'
+        : reason instanceof AuthApiError && reason.status === 403
+          ? official || recurring ? 'Tu cuenta no tiene permiso para publicar eventos oficiales o series en este campus. Revisa el campus seleccionado y los permisos de tu cuenta.'
+            : 'Tu cuenta necesita estar activa y tener verificado el correo institucional de este campus. Revisa tu cuenta antes de publicar.'
+          : reason instanceof AuthApiError && reason.status === 429 ? 'Has hecho demasiados intentos en poco tiempo. Espera un momento antes de volver a publicar.'
+          : previewOnly ? 'No se pudieron calcular las fechas. Revisa tu conexión e intenta generar la vista previa nuevamente.'
             : 'No se pudo confirmar la publicación. Actualiza el listado antes de reintentar para comprobar si se creó.');
       if (reason instanceof AuthApiError && [401, 403].includes(reason.status)) refreshIdentity();
       if (reason instanceof AuthApiError && reason.status === 409 && !official && !recurring) {
@@ -114,14 +117,17 @@ export function CreateActivityForm({ locations, initialLocation, onCreated, offi
     const base = validateActivityDraft(draft, locations);
     const recurrence = recurrenceDraftRule(value.frequency, value.interval, value.until, value.excludedDates, timeZone, value.weekdays);
     if (!base.input || !recurrence.rule) throw new Error(base.error ?? recurrence.error ?? 'Completa los datos de la actividad.');
-    if (!isActivityDescriptionAllowed(draft.description, allowCustomDescription)) throw new Error('Selecciona una descripción válida.');
+    if (!isActivityDescriptionAllowed(draft.description, allowCustomDescription)) throw new Error('Selecciona una descripción de la lista antes de calcular las fechas de la serie.');
     try { return await previewActivitySeries(identity.campusId, { ...base.input, recurrence: recurrence.rule }, official, signal); }
     catch (reason) {
       if (reason instanceof AuthApiError && [401, 403].includes(reason.status)) refreshIdentity();
       throw new Error(reason instanceof AuthApiError && [400, 409].includes(reason.status)
-        ? reason.serverMessage ?? 'Revisa las fechas de la repetición.'
-        : reason instanceof AuthApiError && [401, 403].includes(reason.status)
-          ? 'Necesitas una cuenta activa y permiso para publicar eventos oficiales en tu campus.' : 'No se pudieron calcular las fechas. Reintenta.');
+        ? activityFormErrorMessage(reason, 'No se pudieron validar las fechas de repetición. Revisa la fecha de «¿Hasta cuándo?» y los días seleccionados antes de reintentar.')
+        : reason instanceof AuthApiError && reason.status === 401 ? 'Tu sesión venció. Vuelve a iniciar sesión para calcular las fechas.'
+        : reason instanceof AuthApiError && reason.status === 403
+          ? 'Tu cuenta no tiene permiso para crear series en este campus. Revisa el campus seleccionado y los permisos de tu cuenta.'
+        : reason instanceof AuthApiError && reason.status === 429 ? 'Has solicitado el cálculo demasiadas veces. Espera un momento y pulsa «Reintentar».'
+          : 'No se pudieron calcular las fechas. Revisa tu conexión y pulsa «Reintentar».');
     }
   }, [draft, locations, identity, timeZone, official, allowCustomDescription, refreshIdentity]);
   const canPreview = !!identity && !!validateActivityDraft(draft, locations).input && isActivityDescriptionAllowed(draft.description, allowCustomDescription);
