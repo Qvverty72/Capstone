@@ -40,7 +40,9 @@ export async function insertInstitutionalProfile(profile: NewAuthProfile) {
 export async function signUpInstitutionalUser(input: RegistrationInput) {
   return createPublicSupabaseClient().auth.signUp({
     email: input.email, password: input.password,
-    options: { data: { nombre_completo: input.fullName, campus_id: input.campusId } },
+    // Constancia declarativa del registro; user_metadata es editable y no concede permisos.
+    options: { data: { nombre_completo: input.fullName, campus_id: input.campusId,
+      content_policy_version: input.contentPolicyVersion, content_policy_accepted_at: new Date().toISOString() } },
   });
 }
 

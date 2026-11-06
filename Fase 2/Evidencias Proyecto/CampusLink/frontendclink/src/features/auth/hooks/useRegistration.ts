@@ -4,6 +4,7 @@ import { useAuth } from './useAuth';
 import { completeInstitutionalRegistration, confirmInstitutionalEmail, getRegistrationOptions, registerInstitutionalAccount, resendInstitutionalConfirmation } from '../api/registrationApi';
 import type { RegistrationOption } from '../types/registration';
 import { useResendCooldown } from './useResendCooldown';
+import { CONTENT_POLICY_VERSION } from '../contentPolicy';
 
 /** Coordina catálogo, registro, verificación de correo y finalización del perfil. */
 export function useRegistration() {
@@ -15,6 +16,7 @@ export function useRegistration() {
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
   const [campusId, setCampusId] = useState('');
+  const [acceptedContentPolicy, setAcceptedContentPolicy] = useState(false);
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -49,11 +51,15 @@ export function useRegistration() {
     if (!fullName.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail) || !selectedCampus || !password) {
       setError('Completa tu nombre, correo institucional, contraseña y campus.'); return;
     }
+    if (!acceptedContentPolicy) {
+      setError('Debes leer y aceptar el aviso de responsabilidad y las normas de uso para crear tu cuenta.'); return;
+    }
     cooldown.start();
     Keyboard.dismiss();
     setBusy(true);
     try {
-      await registerInstitutionalAccount({ email: normalizedEmail, fullName: fullName.trim(), password, campusId: selectedCampus.campus_id });
+      await registerInstitutionalAccount({ email: normalizedEmail, fullName: fullName.trim(), password, campusId: selectedCampus.campus_id,
+        acceptedContentPolicy: true, contentPolicyVersion: CONTENT_POLICY_VERSION });
       setPassword('');
       setPendingEmail(normalizedEmail);
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'No se pudo iniciar el registro.'); }
@@ -97,6 +103,6 @@ export function useRegistration() {
 
   return { auth, options, catalogLoading, setCatalogRevision, email, setEmail, fullName, setFullName,
     password, setPassword, setCampusId, pendingEmail, setPendingEmail, code, setCode, busy,
-    confirmingProfile, error, setError, campuses, selectedCampus,
+    confirmingProfile, error, setError, campuses, selectedCampus, acceptedContentPolicy, setAcceptedContentPolicy,
     submit, verify, resend, retryCompletion, resendSeconds: cooldown.seconds };
 }

@@ -12,4 +12,6 @@ export interface RegistrationInput {
   password: string;
   fullName: string;
   campusId: string;
+  acceptedContentPolicy: true;
+  contentPolicyVersion: string;
 }

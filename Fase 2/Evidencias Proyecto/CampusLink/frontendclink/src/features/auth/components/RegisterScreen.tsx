@@ -6,12 +6,13 @@ import { Check, ChevronDown, Circle, CircleCheck, KeyRound, LockKeyhole, Mail, M
 import { useRegistration } from '../hooks/useRegistration';
 import { AUTH_COLORS, authStyles as styles } from './form.styles';
 import { AuthButton, AuthHeading, AuthInput, AuthMessage, AuthScaffold, ResendCodeButton } from './AuthUI';
+import { RegistrationDisclaimer } from './RegistrationDisclaimer';
 
 /** Registro institucional, campus del catálogo y verificación de correo con un mismo lenguaje visual. */
 export function RegisterScreen() {
   const { auth, options, catalogLoading, setCatalogRevision, email, setEmail, fullName, setFullName,
     password, setPassword, setCampusId, pendingEmail, setPendingEmail, code, setCode, busy,
-    confirmingProfile, error, setError, campuses, selectedCampus,
+    confirmingProfile, error, setError, campuses, selectedCampus, acceptedContentPolicy, setAcceptedContentPolicy,
     submit, verify, resend, retryCompletion, resendSeconds } = useRegistration();
   const [campusOpen, setCampusOpen] = useState(false);
   return <AuthScaffold back stepKey={auth.status === 'ready' ? 'ready' : confirmingProfile ? 'profile' : pendingEmail ? 'code' : 'register'}>
@@ -35,7 +36,7 @@ export function RegisterScreen() {
       <View style={styles.actions}>
         <ResendCodeButton seconds={resendSeconds} busy={busy} onPress={resend} />
         <Pressable accessibilityRole="button" disabled={busy} style={[styles.linkButton, busy && styles.disabled]} onPress={() => {
-          setPendingEmail(null); setCode(''); setPassword(''); setCampusOpen(false); setError(null);
+          setPendingEmail(null); setCode(''); setPassword(''); setAcceptedContentPolicy(false); setCampusOpen(false); setError(null);
         }}><Text style={styles.link}>Usar otro correo</Text></Pressable>
       </View>
     </> : <>
@@ -70,7 +71,8 @@ export function RegisterScreen() {
         </View> : !options.length ? <Text style={styles.description}>No hay campus disponibles para registro.</Text> : null}
         {!catalogLoading && !options.length && <Pressable accessibilityRole="button" disabled={busy} style={styles.linkButton}
           onPress={() => setCatalogRevision(value => value + 1)}><Text style={styles.link}>Actualizar campus</Text></Pressable>}
-        <AuthButton busy={busy} disabled={catalogLoading || !fullName.trim() || !password || !selectedCampus || resendSeconds > 0} onPress={submit}>
+        <RegistrationDisclaimer accepted={acceptedContentPolicy} disabled={busy} onChange={setAcceptedContentPolicy} />
+        <AuthButton busy={busy} disabled={catalogLoading || !fullName.trim() || !password || !selectedCampus || !acceptedContentPolicy || resendSeconds > 0} onPress={submit}>
           {resendSeconds > 0 ? `Crear cuenta en ${resendSeconds} s` : 'Crear cuenta'}
         </AuthButton>
       </View>
