@@ -3,6 +3,7 @@ import { probePhysicalgoodsDependencies } from '../repositories/physicalgoods.re
 import type { PhysicalgoodsHealth } from '../types/physicalgoods.types.js';
 import { randomUUID } from 'node:crypto';
 import { ApiError } from '../../../../shared/errors/api-error.js';
+import { assertPublicContent } from '../../../../shared/moderation/content-moderation.js';
 import { requireCampusCapability } from '../../../auth/domain/auth.authorization.js';
 import type { VerifiedAuthConnection } from '../../../auth/types/auth.types.js';
 import type { PhysicalgoodsCatalog, PhysicalgoodsCreated } from '../types/physicalgoods.types.js';
@@ -38,6 +39,7 @@ export async function getPhysicalgoodsOptions(auth: VerifiedAuthConnection) {
 export async function createPhysicalgoods(auth: VerifiedAuthConnection, body: unknown): Promise<PhysicalgoodsCreated> {
   requireCampusCapability(auth, auth.campusId, 'general');
   const { input, photo } = parsePhysicalgoods(body);
+  assertPublicContent({ title: input.title, description: input.description });
   const id = randomUUID();
   const extension = photo.mimeType === 'image/jpeg' ? 'jpg' : photo.mimeType === 'image/png' ? 'png' : 'webp';
   const path = `${auth.campusId}/${auth.userId}/${id}/principal.${extension}`;

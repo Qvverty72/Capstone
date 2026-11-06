@@ -1,5 +1,6 @@
 import { ObjectId } from 'mongodb';
 import { ApiError } from '../../../shared/errors/api-error.js';
+import { assertPublicContent } from '../../../shared/moderation/content-moderation.js';
 import type { VerifiedAuthConnection } from '../../auth/types/auth.types.js';
 import { requireCampusCapability, accountCapabilities } from '../../auth/domain/auth.authorization.js';
 import { getAuthorizedActiveMap } from '../../maps/public.js';
@@ -45,6 +46,7 @@ export async function prepareActivityDocument(auth: VerifiedAuthConnection, inpu
     requireCampusCapability(auth, auth.campusId, 'officialActivities');
     if (!auth.profile.nombre_completo.trim()) throw new ApiError(503, 'DEPENDENCY_UNAVAILABLE', 'The organizer profile is unavailable.');
   }
+  assertPublicContent({ title: input.title, description: input.description, 'location.customLabel': input.location.customLabel });
   const map = await getAuthorizedActiveMap(auth, auth.campusId, dependencies.getActiveMap);
   const buildings = spatialBuildings(map);
   if (!resolveActivityLocation(buildings, input.location)) throw new ApiError(400, 'VALIDATION_ERROR', activityLocationErrorMessage(buildings, input.location));

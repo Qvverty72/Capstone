@@ -1,4 +1,5 @@
 import { ApiError } from '../../../../shared/errors/api-error.js';
+import { assertPublicContent } from '../../../../shared/moderation/content-moderation.js';
 import { notifyResourceUpdated } from '../../public.js';
 import type { VerifiedAuthConnection } from '../../../auth/types/auth.types.js';
 import { digitalAction,withDigitalTradeContext } from './elibrary.trades.service.js';
@@ -10,6 +11,7 @@ export async function editDigitalPublication(auth:VerifiedAuthConnection,id:unkn
   const body=digitalAction(raw,retiring?['updatedAt']:['title','description','modality','price','updatedAt']);
   if(typeof body.updatedAt!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/.test(body.updatedAt))invalidDigital('updatedAt','Recarga la publicación antes de editar.');
   const input=retiring?null:parseDigitalInput({title:body.title,description:body.description,modality:body.modality,price:body.price});
+  if(input)assertPublicContent({title:input.title,description:input.description});
   return withDigitalTradeContext(auth,id,async(client,resource,current)=>{
     if(resource.propietario_id!==current.userId)throw new ApiError(403,'FORBIDDEN','Solo el propietario puede editar o retirar este recurso.');
     const before=(await findDigitalPublications(client,resource.institucion_id,resource.id,undefined,current.userId,'owned'))[0];

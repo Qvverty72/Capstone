@@ -4,6 +4,7 @@ import type { VerifiedAuthConnection } from '../../auth/types/auth.types.js';
 import { requireResourceOwner } from '../../auth/domain/auth.authorization.js';
 import { getAuthorizedActiveMap } from '../../maps/public.js';
 import { ApiError } from '../../../shared/errors/api-error.js';
+import { assertPublicContent } from '../../../shared/moderation/content-moderation.js';
 import { activityLocationErrorMessage, resolveActivityLocation, spatialBuildings } from '../domain/activities.location.js';
 import type { ActivityDocument } from '../types/activities.types.js';
 import type { ActivityEditDependencies, ActivityEditPreview, ActivityEditResult, ActivitySnapshot, EditActivityInput } from '../types/activities.edit.types.js';
@@ -40,6 +41,7 @@ export async function previewActivityEdit(auth: VerifiedAuthConnection, activity
     throw new ApiError(503, 'DEPENDENCY_UNAVAILABLE', 'La identidad de la ocurrencia no está disponible.');
   }
   if (editRevision(current) !== input.expectedRevision) throw conflict();
+  assertPublicContent({ title: input.title, description: input.description, 'location.customLabel': input.location.customLabel });
   if (input.endAt <= input.startAt) throw new ApiError(400, 'VALIDATION_ERROR', 'La fecha y hora de término deben ser posteriores al inicio. Si termina al día siguiente, cambia también la fecha de término.');
   const buildings = spatialBuildings(map);
   if (!resolveActivityLocation(buildings, input.location)) throw new ApiError(400, 'VALIDATION_ERROR', activityLocationErrorMessage(buildings, input.location));

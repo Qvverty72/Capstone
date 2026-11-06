@@ -4,6 +4,7 @@ import type { ElibraryHealth } from '../types/elibrary.types.js';
 import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { ApiError } from '../../../../shared/errors/api-error.js';
+import { assertPublicContent } from '../../../../shared/moderation/content-moderation.js';
 import { withPostgresTransaction } from '../../../../database/supabase/postgres.js';
 import { requireCampusCapability } from '../../../auth/domain/auth.authorization.js';
 import { lockAccountContext } from '../../../auth/public.js';
@@ -33,7 +34,9 @@ export async function currentDigitalContext(client: PoolClient, auth: VerifiedAu
 }
 export async function createDigitalPublication(auth: VerifiedAuthConnection, raw: unknown, upload?: DigitalUpload): Promise<DigitalPublication> {
   requireCampusCapability(auth, auth.campusId, 'general');
-  const input = parseDigitalInput(raw), file = await validateDigitalFile(upload);
+  const input = parseDigitalInput(raw);
+  assertPublicContent({ title: input.title, description: input.description });
+  const file = await validateDigitalFile(upload);
   // Rechaza selecciones inválidas antes de cargar bytes; se comprueban de nuevo tras Storage.
   if (input.careerIds.length || input.subjectIds.length) {
     try {

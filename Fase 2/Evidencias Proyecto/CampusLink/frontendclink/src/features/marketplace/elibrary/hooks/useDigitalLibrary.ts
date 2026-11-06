@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { AuthApiError } from '@/lib/api/authenticated-request';
+import { AuthApiError, apiFormErrorMessage } from '@/lib/api/authenticated-request';
 import { recordResourceOpening } from '../../api/resourceInteractions';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { attachDigitalFile, downloadDigitalFile, loadDigitalAcademicCatalog, loadDigitalPublication, searchDigitalPublications, publishDigitalPublication, updateDigitalAcademics } from '../api/elibraryApi';
@@ -42,7 +42,7 @@ export function useDigitalLibrary() {
     if (reason instanceof AuthApiError && [401, 403].includes(reason.status)) auth.refreshIdentity();
     setError(reason instanceof AuthApiError && reason.status === 503
       ? mutation ? 'No pudimos confirmar la operación. Actualiza la biblioteca antes de volver a intentarlo.' : 'El servicio no está disponible. Inténtalo nuevamente.'
-      : reason instanceof AuthApiError ? reason.serverMessage ?? 'No se pudo completar la operación.'
+      : reason instanceof AuthApiError ? apiFormErrorMessage(reason, 'No se pudo completar la operación.')
         : reason instanceof TypeError ? 'No se pudo conectar con CampusLink. Revisa tu conexión e inténtalo nuevamente.'
           : reason instanceof Error ? reason.message : 'No se pudo completar la operación.');
   }

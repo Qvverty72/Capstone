@@ -48,6 +48,21 @@ test('creation parses UTC dates into BSON-compatible Dates and trims required/op
   assert.equal(parsed({ ...body(), startAt: '2099-10-11T12:00:00Z' }).startAt.toISOString(), body().startAt);
 });
 
+test('moderation rejects creation in every public text field without writes and allows corrected retry', async () => {
+  let writes = 0;
+  const dependencies = { now: () => now, getActiveMap: async () => map, createActivity: async (document: ActivityDocument) => {
+    writes++;
+    return toVisibleActivity(document);
+  } };
+  for (const patch of [{ title: 'actividad para idiotas' }, { description: 'weones' },
+    { location: { ...body().location, customLabel: 'chucha' } }]) {
+    await assert.rejects(createCommunityActivity(auth, parsed({ ...body(), ...patch }), dependencies), { status: 400, code: 'VALIDATION_ERROR' });
+  }
+  assert.equal(writes, 0);
+  await createCommunityActivity(auth, parsed(), dependencies);
+  assert.equal(writes, 1);
+});
+
 test('creation rejects protected fields and malformed or incomplete location objects', () => {
   for (const input of [null, [], 'activity', {}, ...['campusId', 'createdByUserId', 'type', 'status', 'visibility', 'participantCount', 'bannerUrl']
     .map(key => ({ ...body(), [key]: key === 'type' ? 'OFFICIAL_EVENT' : 'override' })),

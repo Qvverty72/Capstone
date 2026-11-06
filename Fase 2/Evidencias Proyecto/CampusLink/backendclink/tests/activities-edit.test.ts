@@ -48,6 +48,21 @@ test('edit parser rejects identity/type/series/participation overrides, invalid 
   assert.equal(editActivityParser()({ ...body(), previewHash: 'a'.repeat(64) }).success, false);
 });
 
+test('moderation rejects edit and preview before save, preserving original content and participants', async () => {
+  const current = document(), original = JSON.stringify(current), id = current._id.toHexString();
+  let writes = 0;
+  const dependencies: ActivityEditDependencies = { ...deps(current), saveEdit: async () => { writes++; throw new Error('Unexpected save'); } };
+  for (const patch of [{ title: 'actividad para idiotas' }, { description: 'aweonaos' },
+    { location: { ...body().location, customLabel: 'weá' } }]) {
+    const input = parsed({ ...body(), ...patch });
+    await assert.rejects(preview(auth, id, input, dependencies), { status: 400 });
+    await assert.rejects(edit(auth, id, { ...input, previewHash: 'a'.repeat(64) }, dependencies), { status: 400 });
+  }
+  assert.equal(writes, 0); assert.equal(JSON.stringify(current), original);
+  const corrected = await preview(auth, id, parsed(), dependencies);
+  assert.equal(corrected.changes[0].after.title, body().title);
+});
+
 test('only creator with active campus access edits; admin cannot override ownership, hidden and foreign publications stay unavailable', async () => {
   const value = document(), id = value._id.toHexString();
   await assert.rejects(preview({ ...auth, userId: other, profile: { ...auth.profile, id: other }, roles: [{ id: 'a', name: 'ADMINISTRADOR', campusId }] }, id, parsed(), deps(value)), { status: 403 });

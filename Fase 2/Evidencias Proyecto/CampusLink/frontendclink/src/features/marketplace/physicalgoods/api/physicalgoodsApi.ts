@@ -1,4 +1,4 @@
-import { authenticatedEnvelopeRequest, authenticatedRequest, AuthApiError } from '@/lib/api/authenticated-request';
+import { authenticatedEnvelopeRequest, authenticatedRequest, AuthApiError, apiFormErrorMessage } from '@/lib/api/authenticated-request';
 import type { PublicationCreated, PublicationInput, PublicationOptions } from '../types/publication';
 import type { PhysicalgoodsGallery, PhysicalgoodsPage, PhysicalgoodsResource, PhysicalgoodsSearchFilters, PublicationPhoto } from '../types/publication';
 import type { PhysicalgoodsRequest, PhysicalgoodsRequestOptions } from '../types/publication';
@@ -89,7 +89,7 @@ export async function publishPhysicalgoods(input: PublicationInput, signal: Abor
     return await authenticatedRequest<PublicationCreated>(path, { method: 'POST', signal,
       headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) });
   } catch (error) {
-    if (error instanceof AuthApiError && error.status === 400) throw new Error(error.serverMessage || 'Revisa los datos de la publicación.');
+    if (error instanceof AuthApiError && error.status === 400) throw new Error(apiFormErrorMessage(error, 'Revisa los datos de la publicación.'));
     if (error instanceof AuthApiError && error.status === 413) throw new Error('La fotografía debe pesar como máximo 5 MB.');
     if (error instanceof AuthApiError && error.status === 409) throw new Error('Tu campus cambió. Recarga el formulario antes de publicar.');
     if (!(error instanceof AuthApiError) || error.status >= 500) throw new Error('No se pudo publicar el recurso. Revisa tu conexión e inténtalo nuevamente.');

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { AuthApiError } from '@/lib/api/authenticated-request';
+import { AuthApiError, apiFormErrorMessage } from '@/lib/api/authenticated-request';
 import { operationId } from '@/lib/api/operation-id';
 import { recordResourceOpening } from '../../api/resourceInteractions';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
@@ -38,7 +38,7 @@ export function usePhysicalgoodsResources(catalogActive = true) {
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; mutation.current?.abort(); }; }, []);
   function report(reason: unknown, setMessage: (message: string) => void) {
     if (reason instanceof AuthApiError && [401, 403].includes(reason.status)) auth.refreshIdentity();
-    else setMessage(reason instanceof AuthApiError ? reason.serverMessage || 'No se pudo completar la operación.' : reason instanceof Error ? reason.message : 'No se pudo completar la operación.');
+    else setMessage(reason instanceof AuthApiError ? apiFormErrorMessage(reason, 'No se pudo completar la operación.') : reason instanceof Error ? reason.message : 'No se pudo completar la operación.');
   }
   useEffect(() => {
     const abort = new AbortController(); let timer: ReturnType<typeof setTimeout> | undefined,renew=false;

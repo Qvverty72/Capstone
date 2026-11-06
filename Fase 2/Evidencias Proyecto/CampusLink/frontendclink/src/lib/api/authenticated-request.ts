@@ -11,6 +11,13 @@ export class AuthApiError extends Error {
   }
 }
 
+/** Presenta todos los campos rechazados, incluidos los términos que deben corregirse. */
+export function apiFormErrorMessage(error: AuthApiError, fallback: string): string {
+  const messages = [...new Set((error.details ?? []).map(detail => detail.message))];
+  if (messages.length) return messages.join('\n');
+  return error.serverMessage && error.serverMessage !== 'Request validation failed.' ? error.serverMessage : fallback;
+}
+
 /** Devuelve solo `data` del sobre estándar de una petición autenticada. */
 export async function authenticatedRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   return (await authenticatedEnvelopeRequest<T>(path, init)).data;

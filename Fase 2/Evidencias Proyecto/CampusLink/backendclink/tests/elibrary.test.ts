@@ -179,6 +179,31 @@ test('donation has no sale price', async () => {
   const response = await post(input({ modality: 'DONACION', price: null })); assert.equal(response.status, 201);
   assert.equal((await response.json()).data.price, null);
 });
+
+test('moderation rejects digital metadata through API before Storage and preserves original, version and history on edit', async () => {
+  const rejected = await post(input({ title: 'Apuntes para idiotas', description: 'aweonaos y weá' }));
+  assert.equal(rejected.status, 400);
+  const error = (await rejected.json()).error;
+  assert.deepEqual(error.details.map((detail: { field: string }) => detail.field), ['title', 'description']);
+  assert.match(error.details[1].message, /aweonaos.*weá/);
+  assert.equal(storageCalls.length, 0); assert.equal(uploads.length, 0);
+  assert.equal((await db.query('SELECT id FROM publicacion_recurso WHERE propietario_id=$1', [auth.userId])).rows.length, 0);
+  const corrected = await post(); assert.equal(corrected.status, 201);
+  const saved = (await corrected.json()).data;
+  const before = await db.query('SELECT * FROM publicacion_recurso WHERE id=$1', [saved.id]);
+  const auditBefore = await db.query('SELECT count(*)::int AS total FROM auditoria');
+  const storageBefore = storageCalls.length, originalBytes = [...objects.values()].map(bytes => Buffer.from(bytes));
+  const raw = { title: saved.title, description: saved.description, modality: saved.modality, price: saved.price, updatedAt: saved.updatedAt };
+  for (const patch of [{ title: 'weones' }, { description: 'weá' }, { description: 'ctm' }]) {
+    const response = await digitalJson('/' + saved.id, 'PATCH', { ...raw, ...patch });
+    assert.equal(response.status, 400); assert.equal((await response.json()).error.code, 'VALIDATION_ERROR');
+  }
+  assert.deepEqual((await db.query('SELECT * FROM publicacion_recurso WHERE id=$1', [saved.id])).rows, before.rows);
+  assert.deepEqual((await db.query('SELECT count(*)::int AS total FROM auditoria')).rows, auditBefore.rows);
+  assert.equal(storageCalls.length, storageBefore); assert.deepEqual([...objects.values()], originalBytes);
+  const retry = await digitalJson('/' + saved.id, 'PATCH', { ...raw, title: 'Apuntes de redes' });
+  assert.equal(retry.status, 200); assert.equal((await retry.json()).data.title, 'Apuntes de redes');
+});
 test('file mandatory, with empty/multiple/unknown multipart parts rejected', async () => {
   assert.equal((await post(input(), null)).status, 400);
   assert.equal((await post(input(), Buffer.alloc(0))).status, 400);

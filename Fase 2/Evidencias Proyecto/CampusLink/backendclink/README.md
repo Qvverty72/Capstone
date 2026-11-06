@@ -1,5 +1,7 @@
 # CampusLink Backend
 
+Moderación local de actividades y publicaciones: [política, vocabulario chileno y flujo de rechazo](CONTENT_MODERATION.md). Verlux bloquea todas las severidades en creación y edición, con mensajes explícitos por campo.
+
 Arquitectura modular: [capas, módulos y dependencias reales](ARCHITECTURE.md),
 [diagrama Mermaid](architecture.mmd) y [registro del refactor](REFACTOR.md).
 Cada funcionalidad vive en `src/modules/`; rutas, controladores, servicios,
