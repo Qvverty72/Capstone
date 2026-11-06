@@ -6,6 +6,7 @@ import type { AnalyticalReport, DashboardMetrics } from '../src/modules/analytic
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { REPORT_KPIS, reportFilename } from '../src/modules/analytics/domain/analytics.presentation.js';
+import { analysisFixture } from './helpers/analytics-analysis.fixture.js';
 
 function fixture(): AnalyticalReport {
   const scope = { institutionId: 'institution-id', institutionName: 'Institución histórica ÁÉÍÓÚ ñ Ω', campusId: null,
@@ -35,6 +36,40 @@ function freeze<T>(value: T): T {
   }
   return value;
 }
+
+test('v2 Excel and PDF preserve advanced snapshot rates, denominators, classifications and unavailable values', async () => {
+  const report = fixture(); report.calculationVersion = 'campuslink-kpi-v2'; report.analysis = analysisFixture();
+  report.intervals[0].metrics!.analysis = report.analysis;
+  const original = JSON.stringify(report); freeze(report);
+  const workbook = new ExcelJS.Workbook(); await workbook.xlsx.load(await renderReportExcel(report));
+  const participation = workbook.getWorksheet('Participacion')!, career = workbook.getWorksheet('Carrera actividad')!;
+  assert.equal(participation.getCell('J2').value, 1); // unique participant, two different activities
+  assert.equal(participation.getCell('M2').value, 2); // two converted pairs / three viewed pairs
+  assert.equal(participation.getCell('N2').value, 66.67); assert.equal(participation.getCell('N2').numFmt, '0.00');
+  assert.equal(participation.getCell('O2').value, 100); assert.equal(career.rowCount, 7);
+  const demand = workbook.getWorksheet('Demanda carreras')!;
+  assert.equal(demand.getCell('L2').value, 150); assert.equal(demand.getCell('L2').numFmt, '0.00');
+  const subjects = workbook.getWorksheet('Demanda asignaturas')!;
+  assert.equal(subjects.getCell('G2').value, '=SUM(1,2)'); assert.equal(subjects.getCell('L2').value, null);
+  assert.equal(participation.rowCount, 3, 'summary and observed interval only; legacy/future do not become zero analysis');
+  const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const task = getDocument({ data: new Uint8Array(await renderReportPdf(report)), isEvalSupported: false, verbosity: 0 });
+  try {
+    const document = await task.promise; let text = '';
+    for (let page = 1; page <= document.numPages; page++) {
+      const content = await (await document.getPage(page)).getTextContent();
+      for (const item of content.items) {
+        if (!('str' in item) || !item.str) continue;
+        text += item.str + '\n';
+        assert.ok(item.transform[4] >= 43 && item.transform[4] + item.width <= 552, `advanced horizontal margin: ${item.str}`);
+        assert.ok(item.transform[5] >= 27 && item.transform[5] <= 813, `advanced vertical margin: ${item.str}`);
+      }
+    }
+    for (const label of ['Participación observada', 'Carrera del participante', 'Ingeniería en Informática', 'Pares convertidos: 2',
+      '66,67', 'Demanda de recursos por carrera', 'Solicitudes por 100 vistas: 150', 'Conversión observada', 'Sin datos']) assert.ok(text.includes(label), label);
+  } finally { await task.destroy(); }
+  assert.equal(JSON.stringify(report), original);
+});
 
 test('XLSX preserves raw numbers, original filters/definitions, zero vs missing, and literal spreadsheet text', async () => {
   const report = freeze(fixture()), original = JSON.stringify(report);

@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import type { AnalyticalReport } from '../types/analytics.types.js';
+import { savedAnalysisTables } from './analytics.analysis.export.js';
 import type { SavedSection } from './analytics.export.js';
 import { REPORT_KPIS, REPORT_STATES, reportPeriodLabel, reportSavedLabel } from '../domain/analytics.presentation.js';
 
@@ -128,6 +129,15 @@ export async function renderSavedReportPdf(report: AnalyticalReport, metadata: [
   line('Una interacción puede contar en varias asignaturas. Resumen e intervalos son niveles distintos: no sumar todas las filas.', 10);
   table('Interés por asignatura', ['Sección', 'Asignatura', 'ID original', 'Vistas', 'Solicitudes'], [88, 222, 93, 47, contentWidth - 450], sections.flatMap(section => (section.metrics?.subjectDemand.subjects ?? []).map(subject =>
     [section.label, subject.subjectName, subject.subjectId, number(subject.views), number(subject.requests)])));
+  for (const analysisTable of savedAnalysisTables(report)) {
+    newPage();
+    line('Resumen e intervalos son niveles distintos; no sumar personas únicas entre filas. Las tasas vacías se muestran como Sin datos.', 10);
+    table(analysisTable.title, ['Período / fechas', 'Desglose', 'Métricas guardadas'], [100, 150, contentWidth - 250], analysisTable.rows.map(row => [
+      `${row[1]}\n${row[2]} a ${row[3]}`,
+      analysisTable.identityColumns ? row.slice(5, 5 + analysisTable.identityColumns).map(value => value ?? 'Sin clasificar').join('\n') : 'Todas las actividades',
+      row.slice(5 + analysisTable.identityColumns).map((value, index) => `${analysisTable.headers[5 + analysisTable.identityColumns + index]}: ${typeof value === 'number' ? number(value) : value ?? 'Sin datos'}`).join('\n'),
+    ]));
+  }
   line('Definiciones de los indicadores', 14, true); line(`Versión guardada: ${report.calculationVersion}`);
   for (const [label, definition] of glossary) { line(label, 11, true); line(definition); }
   newPage(); line('Anexo técnico', 18, true);

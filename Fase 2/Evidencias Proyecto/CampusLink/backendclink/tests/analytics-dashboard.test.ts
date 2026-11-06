@@ -24,7 +24,7 @@ let reportWriteFailure = false, reportCommitFailure = false, viewer = reader;
 let afterCalculation: (() => Promise<void>) | undefined;
 let afterSnapshotRead: (() => Promise<void>) | undefined;
 let statements: string[] = [];
-let events: { campusId: string; userId?: string; occurredAt: Date; type: string; provenance?: string }[] = [];
+let events: { campusId: string; userId?: string; activityId?: string; activityType?: string; category?: string; occurredAt: Date; type: string; provenance?: string }[] = [];
 let readMetrics: typeof import('../src/modules/analytics/repositories/analytics.dashboard.repository.js').readDashboardMetrics;
 
 before(async () => {
@@ -79,7 +79,27 @@ before(async () => {
       return date.toISOString().slice(0, 10);
     };
     return { toArray: async () => {
-      const result = [{ total: group(selected), periods: group(selected, period) }];
+      const audiencePipeline = facet.audience;
+      assert.equal(audiencePipeline[1].$lookup.from, 'activities');
+      assert.deepEqual(audiencePipeline[1].$lookup.pipeline[0].$match.$expr.$and,
+        [{ $eq: ['$_id', '$$activityId'] }, { $eq: ['$campusId', '$$campusId'] }]);
+      const audience = new Map<string, any>();
+      for (const event of selected) {
+        if (!event.userId || !event.activityId) continue;
+        const key = JSON.stringify([event.userId, event.activityId, period(event)]);
+        const row = audience.get(key) ?? { userId: event.userId, activityId: event.activityId, period: period(event),
+          type: event.activityType ?? 'UNCLASSIFIED', category: event.category ?? null,
+          views: 0, joins: 0, withdrawals: 0, legacyEvents: 0, firstViewedAt: null, lastLiveJoinedAt: null };
+        if (event.type === 'VIEWED') { row.views++; row.firstViewedAt = !row.firstViewedAt || event.occurredAt < row.firstViewedAt ? event.occurredAt : row.firstViewedAt; }
+        if (event.type === 'JOINED') {
+          row.joins++;
+          if (event.provenance !== 'LEGACY_STATE') row.lastLiveJoinedAt = !row.lastLiveJoinedAt || event.occurredAt > row.lastLiveJoinedAt ? event.occurredAt : row.lastLiveJoinedAt;
+        }
+        if (event.type === 'LEFT') row.withdrawals++;
+        if (event.provenance === 'LEGACY_STATE') row.legacyEvents++;
+        audience.set(key, row);
+      }
+      const result = [{ total: group(selected), periods: group(selected, period), audience: [...audience.values()] }];
       await afterCalculation?.();
       return result;
     } };
@@ -262,7 +282,7 @@ test('history exposes saved metadata, supports scope and overlapping civil perio
   const page = (await response.json()).data;
   assert.deepEqual(page.items.map((row: any) => row.id), [third.id, second.id, first.id]);
   assert.equal(page.nextCursor, null);
-  const { activeUsers, resourceDemand, subjectDemand, activityParticipation, intervals, notes, ...metadata } = second;
+  const { activeUsers, resourceDemand, subjectDemand, activityParticipation, intervals, notes, analysis, ...metadata } = second;
   assert.deepEqual(page.items[1], metadata);
   for (const [query, ids] of [
     [`campusIds=${campus}`, [second.id, first.id]],
@@ -374,7 +394,7 @@ test('generated report reuses all dashboard results and carries server-owned att
     assert.equal(response.status, 200); assert.equal(response.headers.get('cache-control'), 'no-store');
     const { data } = await response.json();
     assert.deepEqual(data.generatedBy, { userId: reader, name: 'Perfil', email: 'reader@duocuc.cl' });
-    assert.equal(data.calculationVersion, 'campuslink-kpi-v1');
+    assert.equal(data.calculationVersion, 'campuslink-kpi-v2');
     assert.ok(Date.parse(data.generatedAt) >= before && Date.parse(data.generatedAt) <= after);
     const { id, generatedBy, calculationVersion, generatedAt, ...reportData } = data;
     const { generatedAt: dashboardTime, ...dashboardData } = dashboard;
@@ -914,9 +934,83 @@ test('Santiago DST days contain 23 or 25 hours with identical half-open event bo
   }
 });
 
-test('long ranges use two batched SQL metric queries and one Mongo aggregation, with no per-interval reads', async () => {
+test('long ranges use three batched SQL metric queries and one Mongo aggregation, with no per-interval reads', async () => {
   const response = await request('from=2023-01-01&to=2025-12-31&grouping=week');
   assert.equal(response.status, 200); const { data } = await response.json();
-  assert.ok(data.intervals.length > 150); assert.equal(metricReads, 2); assert.equal(mongoReads, 1);
+  assert.ok(data.intervals.length > 150); assert.equal(metricReads, 3); assert.equal(mongoReads, 1);
   assert.ok(data.intervals.every((row: any) => row.metrics !== null && row.status === 'no_activity'));
+});
+
+test('advanced audience obeys event scope, current multi-career memberships, conversion and immutable snapshots', async () => {
+  const { career, secondCareer } = await academicFixtures();
+  const member = await profile(undefined, 'DESACTIVADA', undefined, otherCampus);
+  await db.query('INSERT INTO usuario_carrera(perfil_usuario_id,carrera_id) VALUES($1,$2),($1,$3)', [member, career, secondCareer]);
+  const event = (type: string, userId = member, activityId = 'activity-1', at = campus, occurredAt = '2026-10-10T12:00Z') =>
+    ({ type, userId, activityId, campusId: at, occurredAt: new Date(occurredAt), activityType: 'COMMUNITY_ACTIVITY', category: 'Deporte' });
+  events = [event('VIEWED'), event('VIEWED'), event('JOINED', member, 'activity-1', campus, '2026-10-10T13:00Z'),
+    event('LEFT'), event('JOINED', member, 'activity-2'), event('JOINED', reader),
+    event('JOINED', member, 'foreign', foreignCampus), event('JOINED', member, 'too-late', campus, localUntil.toISOString())];
+  const response = await generateReport(); assert.equal(response.status, 200);
+  const report = (await response.json()).data;
+  const { summary, careers } = report.analysis.activities;
+  assert.equal(report.calculationVersion, 'campuslink-kpi-v2');
+  assert.equal(summary.views, 2); assert.equal(summary.uniqueViewers, 1); assert.equal(summary.joins, 3);
+  assert.equal(summary.uniqueParticipants, 2); assert.equal(summary.repeatParticipants, 1); assert.equal(summary.repeatParticipantRate, 50);
+  assert.equal(summary.viewToJoinRate, 100); assert.equal(summary.withdrawals, 1);
+  assert.equal(careers.length, 3); assert.equal(careers.find((row: any) => row.careerId === career).uniqueParticipants, 1);
+  assert.equal(careers.find((row: any) => row.careerId === null).careerName, 'Sin carrera');
+  assert.ok(!JSON.stringify(report.analysis).includes(member));
+  assert.deepEqual(report.intervals[0].metrics.analysis, report.analysis);
+  const filtered = (await (await request(`from=2026-10-10&to=2026-10-10&careerId=${career}`)).json()).data;
+  assert.equal(filtered.analysis.activities.summary.uniqueParticipants, 1);
+  assert.deepEqual(filtered.analysis.activities.careers.map((row: any) => row.careerId), [career]);
+  await db.query('DELETE FROM usuario_carrera'); events = [];
+  const reads = { metricReads, mongoReads };
+  assert.deepEqual((await (await savedReport(report.id)).json()).data.analysis, report.analysis);
+  const excel = await exportReport(report.id, 'xlsx'); assert.equal(excel.status, 200);
+  const workbook = new ExcelJS.Workbook(); await workbook.xlsx.load(Buffer.from(await excel.arrayBuffer()));
+  assert.equal(workbook.getWorksheet('Participacion')!.getCell('J2').value, 2);
+  assert.equal(workbook.getWorksheet('Carrera actividad')!.rowCount, 7);
+  assert.deepEqual({ metricReads, mongoReads }, reads);
+});
+
+test('academic demand uses publication classifications, avoids relationship fan-out and retains absent denominators', async () => {
+  const { career, secondCareer } = await academicFixtures();
+  const resource = await publication(), withoutViews = await publication(), excluded = await publication(otherCampus);
+  const subject = randomUUID(), secondSubject = randomUUID();
+  await db.query("INSERT INTO asignatura(id,nombre,codigo) VALUES($1,'Álgebra','A'),($2,'Cálculo','C')", [subject, secondSubject]);
+  await db.query('INSERT INTO publicacion_carrera VALUES($1,$2),($1,$3)', [resource, career, secondCareer]);
+  await db.query('INSERT INTO publicacion_asignatura VALUES($1,$2),($1,$3)', [resource, subject, secondSubject]);
+  await view(resource, '2026-10-10T12:00Z');
+  await requestResource(resource, '2026-10-10T13:00Z'); await requestResource(resource, '2026-10-10T14:00Z');
+  await requestResource(withoutViews, '2026-10-10T15:00Z'); await view(excluded, '2026-10-10T12:00Z');
+  await view(resource, localUntil.toISOString());
+  const response = await request(); assert.equal(response.status, 200);
+  const data = (await response.json()).data;
+  const rows = data.analysis.resources;
+  assert.equal(data.resourceDemand.views, 1); assert.equal(data.resourceDemand.requests, 3);
+  for (const id of [career, secondCareer]) {
+    const row = rows.careers.find((row: any) => row.id === id);
+    assert.equal(row.views, 1); assert.equal(row.requests, 2); assert.equal(row.resourcesWithDemand, 1);
+    assert.equal(row.uniqueRequesters, 1); assert.equal(row.requestsPer100Views, 200);
+  }
+  assert.equal(rows.careers.find((row: any) => row.id === null).requestsPer100Views, null);
+  assert.equal(rows.subjects.find((row: any) => row.id === subject).requests, 2);
+  assert.equal(rows.subjects.find((row: any) => row.id === null).requests, 1);
+  const filtered = (await (await request(`from=2026-10-10&to=2026-10-10&careerId=${career}`)).json()).data.analysis.resources;
+  assert.deepEqual(filtered.careers.map((row: any) => row.id), [career]);
+  assert.equal(filtered.subjects.length, 2);
+});
+
+test('advanced analysis distinguishes observed emptiness from future unavailable data', async () => {
+  const observed = (await (await request()).json()).data;
+  assert.equal(observed.analysis.activities.summary.uniqueParticipants, 0);
+  assert.equal(observed.analysis.activities.summary.viewToJoinRate, null);
+  assert.deepEqual(observed.analysis.resources.careers, []);
+  events = [{ userId: reader, activityId: 'view-only', campusId: campus, occurredAt: new Date('2026-10-10T12:00Z'), type: 'VIEWED' }];
+  const viewOnly = (await (await request()).json()).data;
+  assert.equal(viewOnly.intervals[0].status, 'recorded'); assert.equal(viewOnly.activityParticipation.value, 0);
+  assert.equal(viewOnly.analysis.activities.summary.views, 1);
+  const future = (await (await request('from=2099-01-01&to=2099-01-31')).json()).data;
+  assert.equal(future.analysis, null); assert.equal(future.intervals[0].metrics, null);
 });
