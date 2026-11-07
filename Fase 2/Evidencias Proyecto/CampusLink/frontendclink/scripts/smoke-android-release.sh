@@ -12,16 +12,26 @@ if ! sdkmanager "system-images;android-$QA_API;google_apis;x86_64" 'platform-too
   cat smoke-results/sdk-install.log
   exit 1
 fi
-echo no | avdmanager create avd --force --name campuslink-qa --package "system-images;android-$QA_API;google_apis;x86_64"
+export ANDROID_AVD_HOME="$RUNNER_TEMP/campuslink-avds"
+mkdir -p "$ANDROID_AVD_HOME"
+echo no | avdmanager create avd --force --name campuslink-qa --path "$ANDROID_AVD_HOME/campuslink-qa.avd" --package "system-images;android-$QA_API;google_apis;x86_64"
+test -s "$ANDROID_AVD_HOME/campuslink-qa.avd/config.ini"
+if [ ! -f "$ANDROID_AVD_HOME/campuslink-qa.ini" ]; then
+  printf 'avd.ini.encoding=UTF-8\npath=%s\ntarget=android-%s\n' "$ANDROID_AVD_HOME/campuslink-qa.avd" "$QA_API" > "$ANDROID_AVD_HOME/campuslink-qa.ini"
+fi
+"$ANDROID_HOME/emulator/emulator" -list-avds | tee smoke-results/avds.txt
+grep -Fxq campuslink-qa smoke-results/avds.txt
 "$ANDROID_HOME/emulator/emulator" -avd campuslink-qa -no-window -no-audio -no-boot-anim -no-snapshot \
-  -gpu swiftshader_indirect -camera-back none -accel on > smoke-results/emulator.log 2>&1 &
-timeout 300 adb wait-for-device
+  -gpu swiftshader -camera-back none -accel on > smoke-results/emulator.log 2>&1 &
+emulator_pid=$!
+adb start-server
 booted=false
 for attempt in $(seq 1 150); do
-  if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = '1' ]; then booted=true; break; fi
+  if ! kill -0 "$emulator_pid" 2>/dev/null; then tail -n 80 smoke-results/emulator.log; exit 1; fi
+  if [ "$(timeout 5 adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = '1' ]; then booted=true; break; fi
   sleep 2
 done
-test "$booted" = true
+if [ "$booted" != true ]; then tail -n 80 smoke-results/emulator.log; exit 1; fi
 apk=$(find android-artifact -name '*-unsigned.apk' -print -quit)
 test -n "$apk"
 # Emulator-only copy: debug signing allows installation of the CI unsigned APK.
