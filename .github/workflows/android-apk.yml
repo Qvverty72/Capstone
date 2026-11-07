@@ -1,7 +1,13 @@
-name: Android APK
+name: Mobile builds
 
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: Platforms to build
+        type: choice
+        default: android
+        options: [android, ios, all]
 
 permissions:
   contents: read
@@ -12,6 +18,7 @@ concurrency:
 
 jobs:
   apk:
+    if: inputs.target != 'ios'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     defaults:
@@ -51,7 +58,7 @@ jobs:
           set -euo pipefail
           cd android
           chmod +x gradlew
-          ./gradlew :app:assembleRelease --no-daemon --max-workers=2 -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+          ./gradlew :app:assembleRelease --no-daemon --max-workers=2 -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86,x86_64
       - name: Verify APK identity and embedded bundle
         run: |
           set -euo pipefail
@@ -70,6 +77,9 @@ jobs:
           version_code=$(node -p "require('./app.json').expo.android.versionCode")
           grep -Fq "versionCode='$version_code'" "$RUNNER_TEMP/apk-badging.txt"
           grep -Fq "versionName='$version'" "$RUNNER_TEMP/apk-badging.txt"
+          for abi in arm64-v8a armeabi-v7a x86 x86_64; do
+            grep -Fq "'$abi'" "$RUNNER_TEMP/apk-badging.txt"
+          done
           mapping=android/app/build/outputs/mapping/release/mapping.txt
           test -s "$mapping"
           dex_dir="$RUNNER_TEMP/campuslink-dex"
@@ -85,10 +95,82 @@ jobs:
           cp "$mapping" artifacts/R8-mapping.txt
           cd artifacts
           sha256sum "$apk_name" > SHA256SUMS.txt
-          printf 'CampusLink %s\nVersion code: %s\nPackage: cl.campuslink.app\nSource: %s\nAPI: %s\nArchitectures: arm64-v8a, armeabi-v7a\nR8: enabled; GLView constructor and GLContext.flush verified in DEX.\nStandalone release APK; local signing required before installation.\n' "$version" "$version_code" "$GITHUB_SHA" "$EXPO_PUBLIC_API_URL" > BUILD.txt
+          printf 'CampusLink %s\nVersion code: %s\nPackage: cl.campuslink.app\nSource: %s\nAPI: %s\nArchitectures: arm64-v8a, armeabi-v7a, x86, x86_64\nMinimum Android: 7.0 (API 24)\nR8: enabled; GLView constructor and GLContext.flush verified in DEX.\nStandalone release APK; local signing required before installation.\n' "$version" "$version_code" "$GITHUB_SHA" "$EXPO_PUBLIC_API_URL" > BUILD.txt
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: CampusLink-Android-APK
           path: Fase 2/Evidencias Proyecto/CampusLink/frontendclink/artifacts/
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 1
+
+  ios:
+    if: inputs.target == 'ios' || inputs.target == 'all'
+    runs-on: xcode-27
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: Fase 2/Evidencias Proyecto/CampusLink/frontendclink
+    env:
+      CI: '1'
+      NODE_ENV: production
+      EXPO_PUBLIC_API_URL: https://campuslink-api-qa-mxwt.onrender.com
+      EXPO_PUBLIC_SUPABASE_URL: ${{ vars.CAMPUSLINK_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.CAMPUSLINK_SUPABASE_PUBLISHABLE_KEY }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.23.4'
+          cache: npm
+          cache-dependency-path: Fase 2/Evidencias Proyecto/CampusLink/frontendclink/package-lock.json
+      - name: Install locked dependencies and generate iOS
+        run: |
+          test -n "$EXPO_PUBLIC_SUPABASE_URL"
+          test -n "$EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+          npm ci --include=dev
+          npm run typecheck
+          npm run poi:images
+          npx expo prebuild --platform ios --no-install
+          cd ios
+          pod install
+      - name: Build unsigned device IPA for local free signing
+        run: bash scripts/build-ios-release.sh
+      - name: Smoke test release on two iPhone simulators
+        run: bash scripts/smoke-ios-simulator.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: CampusLink-iPhone-IPA
+          path: Fase 2/Evidencias Proyecto/CampusLink/frontendclink/artifacts-ios/
+          if-no-files-found: warn
+          retention-days: 1
+
+  android-smoke:
+    needs: apk
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [24, 34, 36]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: CampusLink-Android-APK
+          path: android-artifact
+      - name: Start release APK on Android emulator
+        env:
+          QA_API: ${{ matrix.api }}
+        run: bash 'Fase 2/Evidencias Proyecto/CampusLink/frontendclink/scripts/smoke-android-release.sh'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: Android-smoke-API-${{ matrix.api }}
+          path: smoke-results/
+          if-no-files-found: warn
+          retention-days: 1
