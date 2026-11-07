@@ -180,8 +180,11 @@ Esta APK también incorpora los filtros de publicaciones de `c07ea9b`. El arregl
 permanece en `investigate/android-map-crash`; no se fusionó a `prerelease` ni
 se lanzó un despliegue de Render.
 
-**Pendiente: probar el mapa en el teléfono Android 14 del usuario.** Instalar
-como actualización de la APK anterior; abrir el mapa, salir y volver, girar y
-ampliar, seleccionar edificios/pisos y probar volver desde segundo plano.
-La presencia de los miembros nativos está comprobada; el comportamiento en
-ese teléfono todavía no se ha verificado y no se dispone de su registro nativo.
+**Visualización confirmada por el usuario en Android 14 con la APK 0.1.1:**
+«ya, ahora si se ve el mapa». La confirmación de que el mapa se muestra respalda
+que la corrección resolvió el cierre inicial observado en la APK anterior.
+
+La prueba comunicada confirma la entrada y visualización del mapa. Todavía no
+se han comunicado resultados sobre salir y volver, girar y ampliar, seleccionar
+edificios/pisos o regresar desde segundo plano. No se dispone de un registro
+nativo del teléfono y no se afirma que esas interacciones estén verificadas.
