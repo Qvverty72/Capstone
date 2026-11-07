@@ -915,6 +915,10 @@ Un rechazo responde con `400 VALIDATION_ERROR` y detalles por campo. El cliente
 conserva el borrador para corregirlo. Esta regla se aplica a las nuevas altas y
 ediciones; no elimina ni modifica automáticamente publicaciones existentes.
 
+Android, iOS y web utilizan esta misma validación del servidor. Los instalables
+solo deben incorporar la URL HTTPS de la API y las claves públicas del cliente;
+las credenciales de MongoDB, PostgreSQL y Supabase servidor permanecen en Render.
+
 ## Referencias técnicas
 
 [Inicialización Supabase JS](https://supabase.com/docs/reference/javascript/initializing), [getUser](https://supabase.com/docs/reference/javascript/auth-getuser), [Auth en React Native](https://supabase.com/docs/guides/auth/quickstarts/react-native), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security) y [opciones de MongoDB Node](https://www.mongodb.com/docs/drivers/node/current/connect/connection-options/).

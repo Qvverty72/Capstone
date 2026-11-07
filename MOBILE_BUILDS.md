@@ -76,3 +76,8 @@ descargables se añadirán aquí al terminar las comprobaciones.
 La protección está en `CampusMapViewport.web.tsx`, que Metro excluye de Android
 e iOS. Las builds nativas en curso proceden de `19d5213`; el cambio posterior
 solo afecta a la web y a documentación.
+
+En la pantalla de navegador 402×681/DPR 3 del perfil iPhone 17, Chromium y WebKit
+pasaron selección de edificio, regreso al campus, rotación y zoom con eventos
+táctiles DOM simulados, además de salir al perfil y volver al mapa. No se trata
+de una ejecución física en el iPhone 17 con iOS 26.3.

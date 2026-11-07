@@ -419,6 +419,19 @@ colecciones MongoDB ni se cambia el contrato usado por los modales.
 
 ## Compatibilidad del MVP
 
+La distribución móvil 0.1.2 mantiene Android 7.0/API 24 como mínimo del APK y
+iOS 16.4 como mínimo de las dependencias Expo instaladas. Estos mínimos no
+constituyen una certificación de cada teléfono ni de su GPU.
+
+En web, `CampusMapViewport.web.tsx` comprueba WebGL2 antes de montar el mapa.
+Si no está disponible, muestra un aviso con reintento y conserva la navegación
+del resto de CampusLink. Un límite de error recupera también fallos de render
+React dentro del mapa; no puede recuperar un proceso nativo terminado por el SO.
+
+La variante nativa conserva su viewport original. En Android, el script de
+release protege el constructor de `GLView` y `GLContext.flush()` frente a R8;
+el workflow comprueba ambos miembros en el DEX real antes de entregar la APK.
+
 - Expo SDK 58
 - React 19.3.0
 - React Native 0.88.0
