@@ -140,5 +140,48 @@ La compilación manual ahora revisa el DEX optimizado y su mapping: exige una
 rechaza una regresión aunque las reglas de entrada parezcan correctas. La firma
 privada se conserva localmente para permitir instalar esta APK como actualización.
 
-Pendientes: terminar la compilación, comprobar y firmar el artefacto, entregar
-el descargable y realizar la prueba del mapa en el teléfono del usuario.
+Validación local: typecheck correcto y **453 pruebas frontend aprobadas**, sin
+fallos ni omisiones. El nuevo verificador también rechazó el DEX real de la
+APK anterior por la clase de la vista abstracta y sin constructor.
+
+Compilación manual de prueba:
+[GitHub Actions 42415726889](https://github.com/Qvverty72/Capstone/actions/runs/42415726889),
+fuente `3cf1e3d604718e6c5f2df12198295553c2cb40ff`.
+
+### Resultado de la compilación y entrega
+
+GitHub Actions terminó con **success**, `BUILD SUCCESSFUL in 17m 39s`.
+El DEX optimizado confirma que `GLView` (`oz0`) es concreta y conserva su
+constructor público `(Context, AppContext)`; `GLContext` (`iz0`) conserva
+`public void flush()`. La misma comprobación pasó de nuevo en la APK firmada.
+
+- [Descargar CampusLink 0.1.1 Android](https://drive.google.com/file/d/1a-GV1n6Zt0xSFb_qHMON5aIcPpB0e6Hh/view?usp=drivesdk).
+- Archivo: `CampusLink-0.1.1-android.apk`, **68 746 238 bytes**.
+- SHA-256: `b9188a4bd8e1a248fa5f2d472a7a482da910c1805843d0d65e4896e84d76cb94`.
+- Copia local ignorada: `frontendclink/artifacts/CampusLink-0.1.1-android.apk`.
+- Paquete: `cl.campuslink.app`; versión 0.1.1, `versionCode` 2; no es debuggable.
+- Arquitecturas: `arm64-v8a` y `armeabi-v7a`; SDK mínimo 24.
+- Firma v2 y v3 verificadas y alineación de 16 KiB correcta. El certificado
+  SHA-256 coincide con el de la APK 0.1.0:
+  `53cc852a2ddfdb760c79df6894423d66709fde8be12a8c8ea193ce3c47b9296d`.
+
+El checksum del APK sin firmar coincide con el de CI. Todos sus archivos
+originales conservan los mismos bytes después de firmar; solo se añaden
+metadatos de firma. El GLB sigue siendo idéntico al original. El bundle contiene
+la URL de Render y la configuración pública esperada de Supabase; no coincide
+con los valores privados locales comprobados, ni empaqueta archivos `.env` o
+de firma privada.
+
+La APK nueva se subió a la carpeta **Capstone** de Drive, junto a la versión
+anterior. No se cambiaron permisos de compartición. La lectura posterior
+verificó el nombre, MIME Android y tamaño del archivo.
+
+Esta APK también incorpora los filtros de publicaciones de `c07ea9b`. El arreglo
+permanece en `investigate/android-map-crash`; no se fusionó a `prerelease` ni
+se lanzó un despliegue de Render.
+
+**Pendiente: probar el mapa en el teléfono Android 14 del usuario.** Instalar
+como actualización de la APK anterior; abrir el mapa, salir y volver, girar y
+ampliar, seleccionar edificios/pisos y probar volver desde segundo plano.
+La presencia de los miembros nativos está comprobada; el comportamiento en
+ese teléfono todavía no se ha verificado y no se dispone de su registro nativo.
