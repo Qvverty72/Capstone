@@ -10,8 +10,8 @@ import { createElibraryRouter } from '../modules/marketplace/elibrary/elibrary.r
 import { createPhysicalgoodsRouter } from '../modules/marketplace/physicalgoods/physicalgoods.routes.js';
 import { createReportsRouter } from '../modules/reports/reports.routes.js';
 import { createUsersRouter } from '../modules/users/users.routes.js';
-import { getReadiness } from '../readiness.js';
-import { sendError, sendSuccess } from '../shared/http/api-response.js';
+import { getDependencyReadiness } from '../database/readiness.js';
+import type { DependencyReadiness } from '../shared/health/readiness.js';
 import { ApiError } from '../shared/errors/api-error.js';
 import type { ActiveMapLookup } from '../modules/maps/services/map.service.js';
 
@@ -19,6 +19,7 @@ export interface ApiRouterOptions {
   getActiveMap?: ActiveMapLookup;
   activities?: ActivityDependencies;
   diagnosticsEnabled?: boolean;
+  readiness?: () => Promise<DependencyReadiness>;
 }
 
 /**
@@ -36,14 +37,20 @@ export function createApiRouter(options: ApiRouterOptions = {}): Router {
     response.json({ status: 'ok' });
   });
 
-  if (diagnostics) apiRouter.get('/ready', publicEndpoint, async (_request, response) => {
+  apiRouter.get('/ready', publicEndpoint, async (_request, response) => {
     response.setHeader('Cache-Control', 'no-store');
-    const readiness = await getReadiness();
-    if (readiness.status === 'unavailable') {
-      sendError(response, 503, 'DEPENDENCY_UNAVAILABLE', 'A required dependency is unavailable');
-      return;
+    try {
+      const readiness = await (options.readiness ?? getDependencyReadiness)();
+      // Rebuild the public response from an allowlist, even if an injected probe returns extra fields.
+      const dependencies = Object.fromEntries(['mongodb', 'postgresql', 'redis', 'supabase'].map(name =>
+        [name, readiness.dependencies[name as keyof DependencyReadiness['dependencies']] === 'ok' ? 'ok' : 'unavailable']));
+      const status = Object.values(dependencies).every(value => value === 'ok') ? 'ok' : 'unavailable';
+      response.status(status === 'ok' ? 200 : 503).json({ status, dependencies });
+    } catch {
+      response.status(503).json({ status: 'unavailable', dependencies: {
+        mongodb: 'unavailable', postgresql: 'unavailable', redis: 'unavailable', supabase: 'unavailable',
+      } });
     }
-    sendSuccess(response, readiness);
   });
 
   apiRouter.use('/users', createUsersRouter(diagnostics));

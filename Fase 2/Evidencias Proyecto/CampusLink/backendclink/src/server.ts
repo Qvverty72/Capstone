@@ -14,8 +14,15 @@ async function main(): Promise<void> {
   const shutdown = async (): Promise<void> => {
     if (stopping) return;
     stopping = true;
-    try { await Promise.all([stopNotifications(),stopPhysicalgoodsReminders()]); await stopApi(server); }
+    // Render sends SIGTERM before stopping the container. Bound the entire drain,
+    // including workers and pool cleanup, within its default 30-second grace period.
+    const deadline = setTimeout(() => {
+      console.error('API shutdown deadline exceeded'); process.exit(1);
+    }, 29000);
+    deadline.unref();
+    try { await stopApi(server, () => Promise.all([stopNotifications(), stopPhysicalgoodsReminders()])); }
     catch { console.error('API shutdown failed'); process.exitCode = 1; }
+    finally { clearTimeout(deadline); }
   };
   process.once('SIGINT', () => void shutdown());
   process.once('SIGTERM', () => void shutdown());

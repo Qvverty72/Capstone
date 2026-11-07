@@ -133,7 +133,7 @@ curl http://localhost:3000/api/v1/health
 
 En PowerShell, utilizar curl.exe si curl corresponde a un alias. La respuesta esperada es {"status":"ok"}. El contenedor solo abre el puerto después de comprobar las dependencias. Su healthcheck posterior verifica que HTTP responde; no consulta las bases en cada ejecución. Compose espera a que esté saludable con --wait.
 
-La imagen y Compose utilizan NODE_ENV=development; Compose fija PORT=3000 dentro del contenedor. HEALTH_DIAGNOSTICS_ENABLED se toma del .env: con true se registran /ready y los health de módulos; con false responden 404. Los valores definidos en environment prevalecen sobre env_file.
+La imagen utiliza NODE_ENV=production; Compose lo cambia a development y fija PORT=3000 para desarrollo local. HEALTH_DIAGNOSTICS_ENABLED se toma del .env: con true habilita los health de módulos solamente en desarrollo. /health y /ready siempre son públicos. Los valores definidos en environment prevalecen sobre env_file.
 
 El contenedor sigue ejecutando node dist/server.js: el build compila src y el runtime instala únicamente sus dependencias necesarias. Para aplicar cambios de código, ejecutar docker compose up --build -d --wait --wait-timeout 180. No se han añadido watch ni montajes del código local. Esta configuración es para desarrollo; un despliegue de producción deberá fijar NODE_ENV=production y conservar los diagnósticos detallados deshabilitados.
 
@@ -194,7 +194,7 @@ Los health verifican disponibilidad técnica mediante lecturas acotadas y descar
 | Método | Ruta | Acceso y respuesta |
 | --- | --- | --- |
 | GET | /api/v1/health | Público, liveness; contrato existente { status: 'ok' }, no consulta bases |
-| GET | /api/v1/ready | Diagnóstico de desarrollo con opt-in; agrega las siete sondas |
+| GET | /api/v1/ready | Readiness público, también en producción; estados genéricos de MongoDB, PostgreSQL, Redis y Supabase |
 | GET | /api/v1/users/health | Diagnóstico de desarrollo con opt-in |
 | GET | /api/v1/auth/health | Diagnóstico relacional de desarrollo con opt-in |
 | GET | /api/v1/maps/health | Diagnóstico de desarrollo con opt-in, dos motores |
@@ -343,7 +343,7 @@ curl.exe http://localhost:3000/api/v1/health
 curl.exe http://localhost:3000/api/v1/ready
 ~~~
 
-health devuelve el estado del proceso sin consultar bases. ready comprueba las dependencias de los siete módulos y devuelve 200 con data.status=ok cuando todas están disponibles, o 503 ante un fallo. Las rutas individuales están en la tabla de rutas. En producción o sin el opt-in de desarrollo, ready y los health de módulos responden 404.
+health conserva {status:"ok"} y no consulta dependencias. ready devuelve {status,dependencies} con estados ok/unavailable y HTTP 200 o 503. Usa lecturas acotadas, caché breve y una sola operación pendiente por dependencia. Ambos evitan el limitador Redis para poder diagnosticar una caída. Las sondas detalladas de módulos solo están disponibles con el opt-in de desarrollo; el arranque sigue comprobándolas antes de abrir el puerto. Consultar [el procedimiento de Render QA](../../../../RENDER_QA.md).
 
 Las colecciones esperadas del modelo actual son campus_maps, activities, activity_participation, activity_interactions y moderation_logs. Las sondas requieren las cuatro primeras; moderation_logs corresponde a moderación. Una colección existente vacía es válida; una ausente falla. La API no crea colecciones ni aplica migraciones durante el arranque. Versionar el modelo, sus validadores e índices corresponde a F2.2-02.
 

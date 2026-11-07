@@ -55,6 +55,13 @@ export function loadEnv(input: Environment) {
   if (nodeEnv === 'production' && !rateLimitRedisUrl) {
     throw new Error('RATE_LIMIT_REDIS_URL is required in production for shared rate limits');
   }
+  const corsAllowedOrigins = input.CORS_ALLOWED_ORIGINS?.split(',').map(origin => origin.trim()).filter(Boolean) ?? [];
+  for (const origin of corsAllowedOrigins) {
+    try {
+      const allowed = new URL(origin);
+      if (!['http:', 'https:'].includes(allowed.protocol) || allowed.origin !== origin) throw new Error();
+    } catch { throw new Error('CORS_ALLOWED_ORIGINS must contain comma-separated HTTP(S) origins'); }
+  }
   if (supabaseDatabaseUrl) {
     let databaseUrl: URL;
     try { databaseUrl = new URL(supabaseDatabaseUrl); } catch { throw new Error('SUPABASE_DB_URL must be a PostgreSQL connection URL'); }
@@ -76,6 +83,8 @@ export function loadEnv(input: Environment) {
     supabaseSecretKey: input.SUPABASE_SECRET_KEY?.trim() || input.SUPABASE_SERVICE_ROLE_KEY?.trim() || undefined,
     supabaseDatabaseUrl,
     nodeEnv,
+    corsAllowedOrigins,
+    trustProxyHops: integer(input, 'TRUST_PROXY_HOPS', 0, 0, 5),
     port: integer(input, 'PORT', 3000, 1, 65535),
     databaseTimeoutMs: integer(input, 'DATABASE_TIMEOUT_MS', 5000, 100, 60000),
     healthCacheTtlMs: integer(input, 'HEALTH_CACHE_TTL_MS', 5000, 0, 60000),

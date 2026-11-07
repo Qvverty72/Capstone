@@ -62,3 +62,17 @@ test('unavailable readiness closes dependencies without opening the HTTP port', 
   assert.equal(closed, 1);
   assert.equal(listened, 0);
 });
+
+test('shutdown stops accepting HTTP immediately and drains workers before closing dependencies', async () => {
+  const server = createServer((_request, response) => response.end('ok')).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  let release!: () => void;
+  const work = new Promise<void>(resolve => { release = resolve; });
+  const closing = mock.method(MongoClient.prototype, 'close', async () => {});
+  try {
+    const stopping = api.stopApi(server, () => work);
+    assert.equal(server.listening, false);
+    await new Promise(resolve => setImmediate(resolve)); assert.equal(closing.mock.callCount(), 0);
+    release(); await stopping; assert.equal(closing.mock.callCount(), 1);
+  } finally { release(); closing.mock.restore(); }
+});

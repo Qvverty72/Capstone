@@ -15,15 +15,22 @@ let connecting: Promise<unknown> | undefined;
 export async function connectRateLimitRedis() {
   if (!env.rateLimitRedisUrl) return;
   if (!client) {
-    client = createClient({ url: env.rateLimitRedisUrl, disableOfflineQueue: true,
-      socket: { connectTimeout: env.databaseTimeoutMs, reconnectStrategy: false } });
+    client = createClient({ url: env.rateLimitRedisUrl, disableOfflineQueue: true, commandsQueueMaxLength: 1000,
+      socket: { connectTimeout: env.databaseTimeoutMs,
+        reconnectStrategy: retries => Math.min(2000, 100 * 2 ** Math.min(retries, 5)) } });
     // No registrar el error del proveedor: puede contener credenciales/origen.
     client.on('error', () => undefined);
   }
-  if (!client.isReady) {
+  if (!client.isOpen) {
     connecting ??= client.connect().finally(() => { connecting = undefined; });
-    await connecting;
   }
+  if (connecting) await withDeadline(connecting);
+  if (!client.isReady) throw new Error('Shared rate limit unavailable');
+}
+
+export async function probeRateLimitRedis(): Promise<void> {
+  if (!client?.isReady) throw new Error('Shared rate limit unavailable');
+  if (await client.ping() !== 'PONG') throw new Error('Shared rate limit unavailable');
 }
 
 export const redisRateLimitStore: RateLimitStore = {

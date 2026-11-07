@@ -39,5 +39,8 @@
     "@types/pg": "^8.23.1",
     "tsx": "latest",
     "typescript": "latest"
+  },
+  "overrides": {
+    "exceljs": { "uuid": "^11.1.1" }
   }
 }

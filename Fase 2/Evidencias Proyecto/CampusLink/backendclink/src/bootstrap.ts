@@ -40,14 +40,14 @@ export async function startApi(dependencies: BootstrapDependencies = defaults): 
   }
 }
 
-export async function stopApi(server: Server): Promise<void> {
+export async function stopApi(server: Server, drainWorkers: () => Promise<unknown> = async () => {}): Promise<void> {
   try {
-    await new Promise<void>((resolve, reject) => {
+    await Promise.all([new Promise<void>((resolve, reject) => {
       server.close(error => error ? reject(error) : resolve());
       // Limita el cierre aunque algún cliente mantenga abierta una conexión HTTP.
       const timer = setTimeout(() => server.closeAllConnections(), env.databaseTimeoutMs);
       timer.unref();
       server.once('close', () => clearTimeout(timer));
-    });
+    }), drainWorkers()]);
   } finally { await defaults.close(); }
 }

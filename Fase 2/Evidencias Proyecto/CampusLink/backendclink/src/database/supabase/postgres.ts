@@ -7,13 +7,23 @@ function getPool(): Pool {
   if (!pool) {
     const local = ['localhost', '127.0.0.1', '[::1]'].includes(new URL(env.supabaseDatabaseUrl).hostname);
     pool = new Pool({ connectionString: env.supabaseDatabaseUrl, max: 5,
-      connectionTimeoutMillis: env.databaseTimeoutMs, query_timeout: env.databaseTimeoutMs + 1000, idleTimeoutMillis: 10000,
+      connectionTimeoutMillis: env.databaseTimeoutMs, query_timeout: env.databaseTimeoutMs + 1000,
+      statement_timeout: env.databaseTimeoutMs, idleTimeoutMillis: 10000,
       ssl: local ? undefined : { rejectUnauthorized: true },
     });
     // Los errores del driver pueden contener datos de conexión; nunca se registran sin filtrar.
     pool.on('error', () => console.error('PostgreSQL connection unavailable'));
   }
   return pool;
+}
+
+/** Uses the same verified TLS pool as business transactions; never changes data. */
+export async function probePostgres(): Promise<void> {
+  const client = await getPool().connect();
+  let destroy = false;
+  try { await client.query('SELECT 1'); }
+  catch (error) { destroy = true; throw error; }
+  finally { client.release(destroy); }
 }
 
 /** Ejecuta la operación con timeouts locales y revierte cualquier error antes de liberar el cliente. */
