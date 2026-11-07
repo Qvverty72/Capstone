@@ -5,6 +5,10 @@ Fecha: 7 de noviembre de 2026, America/Santiago.
 Rama: `investigate/android-map-crash`, creada desde `prerelease` en
 `c07ea9bb70efe578f9d481e174e5009b3f3d644c`.
 
+Datos comunicados por el usuario: teléfono con **Android 14**, modelo no
+identificado. Al entrar al mapa la aplicación se cierra y aparece un aviso que
+sugiere borrar la caché; no se dispone del texto exacto ni del registro nativo.
+
 ## Resultado
 
 Se encontró un defecto concreto en la APK entregada: R8 eliminó el constructor
@@ -98,8 +102,8 @@ necesarios. No es preciso reemplazar el mapa por una WebView.
 
 ## Verificación pendiente, cuando se autorice otra APK
 
-1. Obtener el modelo y versión Android del teléfono. Reproducir el cierre con
-   la APK actual y recoger el registro nativo:
+1. Registrar el modelo del teléfono; el usuario ya confirmó Android 14.
+   Reproducir el cierre con la APK actual y recoger el registro nativo:
    `adb logcat -b crash -d -v threadtime`.
    Se esperan firmas como constructor inexistente de la vista o un error JNI
    al resolver `flush`; el registro decidirá la firma exacta.
