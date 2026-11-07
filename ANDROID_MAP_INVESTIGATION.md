@@ -188,3 +188,7 @@ La prueba comunicada confirma la entrada y visualización del mapa. Todavía no
 se han comunicado resultados sobre salir y volver, girar y ampliar, seleccionar
 edificios/pisos o regresar desde segundo plano. No se dispone de un registro
 nativo del teléfono y no se afirma que esas interacciones estén verificadas.
+
+Actualización posterior: el arreglo se integró en `prerelease` con la entrega
+móvil 0.1.2. Los descargables, la matriz de compatibilidad y los despliegues
+actuales se documentan en [MOBILE_BUILDS.md](MOBILE_BUILDS.md).
