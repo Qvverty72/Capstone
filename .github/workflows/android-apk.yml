@@ -7,10 +7,15 @@ on:
         description: Platforms to build
         type: choice
         default: android
-        options: [android, ios, all]
+        options: [android, ios, all, android-smoke]
+      artifact_run:
+        description: Existing run ID for android-smoke only
+        type: string
+        default: ''
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: android-apk-${{ github.ref }}
@@ -18,7 +23,7 @@ concurrency:
 
 jobs:
   apk:
-    if: inputs.target != 'ios'
+    if: inputs.target == 'android' || inputs.target == 'all'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     defaults:
@@ -149,6 +154,7 @@ jobs:
 
   android-smoke:
     needs: apk
+    if: always() && (needs.apk.result == 'success' || (inputs.target == 'android-smoke' && inputs.artifact_run != ''))
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     strategy:
@@ -163,6 +169,8 @@ jobs:
         with:
           name: CampusLink-Android-APK
           path: android-artifact
+          run-id: ${{ inputs.artifact_run || github.run_id }}
+          github-token: ${{ github.token }}
       - name: Start release APK on Android emulator
         env:
           QA_API: ${{ matrix.api }}

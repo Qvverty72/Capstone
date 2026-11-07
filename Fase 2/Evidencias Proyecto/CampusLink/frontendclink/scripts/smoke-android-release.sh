@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 mkdir -p smoke-results
+sdk_bin=$(dirname "$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)")
+export PATH="$sdk_bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+command -v sdkmanager
+command -v avdmanager
 echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
 sudo udevadm control --reload-rules
 sudo udevadm trigger --name-match=kvm
-sdkmanager "system-images;android-$QA_API;google_apis;x86_64" 'platform-tools' 'emulator' > smoke-results/sdk-install.log 2>&1
+if ! sdkmanager "system-images;android-$QA_API;google_apis;x86_64" 'platform-tools' 'emulator' > smoke-results/sdk-install.log 2>&1; then
+  cat smoke-results/sdk-install.log
+  exit 1
+fi
 echo no | avdmanager create avd --force --name campuslink-qa --package "system-images;android-$QA_API;google_apis;x86_64"
 "$ANDROID_HOME/emulator/emulator" -avd campuslink-qa -no-window -no-audio -no-boot-anim -no-snapshot \
   -gpu swiftshader_indirect -camera-back none -accel on > smoke-results/emulator.log 2>&1 &
