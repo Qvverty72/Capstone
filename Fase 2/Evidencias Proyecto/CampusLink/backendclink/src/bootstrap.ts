@@ -1,4 +1,5 @@
 import type { Server } from 'node:http';
+import { setTimeout as wait } from 'node:timers/promises';
 import { app } from './app.js';
 import { env } from './config/env.js';
 import { closeMongoDB, connectMongoDB } from './database/mongodb/client.js';
@@ -12,6 +13,7 @@ interface BootstrapDependencies {
   verify: () => Promise<ApiReadiness>;
   close: () => Promise<void>;
   listen: () => Promise<Server>;
+  wait?: (milliseconds: number) => Promise<void>;
 }
 const defaults: BootstrapDependencies = {
   connect: async () => { await Promise.all([connectMongoDB(), connectRateLimitRedis()]); },
@@ -31,8 +33,16 @@ const defaults: BootstrapDependencies = {
 export async function startApi(dependencies: BootstrapDependencies = defaults): Promise<Server> {
   try {
     await dependencies.connect();
-    const readiness = await dependencies.verify();
-    if (readiness.status !== 'ok') throw new Error('Required dependencies are unavailable');
+    // Fresh provider connections can fail transiently (observed on Supabase in Render).
+    // Retry read-only probes, never opening HTTP until every dependency is ready.
+    // Wait beyond the readiness cache TTL so a cached failure can expire.
+    for (let attempt = 1; ; attempt++) {
+      const readiness = await dependencies.verify();
+      if (readiness.status === 'ok') break;
+      if (attempt === 3) throw new Error('Required dependencies are unavailable');
+      console.warn('Startup readiness unavailable; retrying verification');
+      await (dependencies.wait ?? wait)(Math.max(1000, env.healthCacheTtlMs + 100));
+    }
     return await dependencies.listen();
   } catch {
     await dependencies.close().catch(() => { console.error('Unable to close database connections after startup failure'); });
