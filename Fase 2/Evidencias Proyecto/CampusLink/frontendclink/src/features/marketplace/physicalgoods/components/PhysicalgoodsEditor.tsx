@@ -12,7 +12,7 @@ export function PhysicalgoodsEditor({edit,disabled,busy,onSave,onCancel}:{edit:R
  const {draft,setDraft}=edit;
  if(!draft)return null;
  return <View style={f.form}>
-  <PublicationSection number="1" title="Datos del recurso">
+  <PublicationSection number="1" title="Datos del recurso" content={{title:draft.title,description:draft.description}}>
    <View style={f.field}><Text style={f.label}>Nombre del recurso *</Text><TextInput accessibilityLabel="Editar nombre del recurso" value={draft.title} editable={!disabled} onChangeText={title=>setDraft({...draft,title})} maxLength={200} style={f.input}/></View>
    <View style={f.field}><Text style={f.label}>Descripción *</Text><TextInput accessibilityLabel="Editar descripción del recurso" value={draft.description} editable={!disabled} onChangeText={description=>setDraft({...draft,description})} maxLength={4000} multiline style={[f.input,f.textarea]}/></View>
    <SearchableFilterSelect label="Condición *" searchable={false} options={resourceConditions.map(row=>({id:row.value,name:row.label}))} value={draft.condition} onChange={condition=>setDraft({...draft,condition:condition as typeof draft.condition})} expanded={conditionOpen} onExpandedChange={setConditionOpen} disabled={disabled} allowEmpty={false}/>

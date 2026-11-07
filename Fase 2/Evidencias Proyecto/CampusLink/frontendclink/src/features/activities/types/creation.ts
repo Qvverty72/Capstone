@@ -1,3 +1,5 @@
+import { publicTextError } from '../../../lib/validation/public-content';
+
 export const ACTIVITY_CONTENT_LIMITS = { title: 120, description: 2000, customLabel: 160 } as const;
 
 /** Opciones del formulario para cuentas sin capacidad de publicación oficial en el campus. */
@@ -89,6 +91,9 @@ export function validateActivityDraft(draft: ActivityDraft, locations: ActivityL
   if (/[\u0000-\u001F\u007F]/.test(draft.customLabel)) {
     return { error: 'La referencia del lugar debe estar en una sola línea y sin caracteres invisibles. Elimina los saltos de línea, las tabulaciones y los caracteres no admitidos.' };
   }
+  const contentError = [publicTextError(draft.title, 'El nombre'), publicTextError(draft.description, 'La descripción', true),
+    publicTextError(draft.customLabel, 'La referencia del lugar')].filter(Boolean).join('\n');
+  if (contentError) return { error: contentError };
   for (const [date, time, endpoint] of [[draft.startDate, draft.startTime, 'inicio'], [draft.endDate, draft.endTime, 'término']] as const) {
     const error = dateTimeError(date, time, endpoint);
     if (error) return { error };

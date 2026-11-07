@@ -192,6 +192,13 @@ async function post(body: unknown, authorization = 'Bearer ' + token) {
 }
 
 test('moderation rejects physical create/edit through API without Storage, history or content changes and permits correction', async () => {
+  for (const text of ['Hi h!tler', 'Tul_a}', 'Material 😀', 'Texto, nuevo']) {
+    for (const field of ['title', 'description']) {
+      const response = await post(input({ [field]: text }));
+      assert.equal(response.status, 400);
+      assert.equal((await response.json()).error.code, 'VALIDATION_ERROR');
+    }
+  }
   const rejected = await post(input({ title: 'Material para idi0tas', description: 'weá y conchetumadre' }));
   assert.equal(rejected.status, 400);
   const error = (await rejected.json()).error;
@@ -204,7 +211,8 @@ test('moderation rejects physical create/edit through API without Storage, histo
   const before = await db.query('SELECT * FROM publicacion_recurso WHERE id=$1', [saved.id]);
   const auditBefore = await db.query('SELECT count(*)::int AS total FROM auditoria');
   const storageBefore = storageCalls.length;
-  for (const patch of [{ title: 'weones' }, { description: 'weá' }, { description: 'conchesumare' }]) {
+  for (const patch of [{ title: 'weones' }, { description: 'weá' }, { description: 'conchesumare' },
+    { title: 'Hi h!tler' }, { description: 'Tul_a}' }, { description: 'Material 😀' }]) {
     const response = await originalFetch(base + '/' + saved.id, { method: 'PATCH',
       headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(updates(detail, patch)) });
     assert.equal(response.status, 400); assert.equal((await response.json()).error.code, 'VALIDATION_ERROR');
@@ -537,7 +545,9 @@ async function otherActor(role?:'ADMINISTRADOR'|'USUARIO_AUTORIZADO'): Promise<V
 
 test('search matches case-insensitive words across name/description and escapes wildcard characters as literal text', async () => {
   const book = await create(auth, input({ title: 'Libro integral', description: 'Ejercicios profesionales' }));
-  const literal = await create(auth, input({ title: 'Material 100% _literal_ \\ especial', description: 'Otra publicación' }));
+  const literal = await create(auth, input({ title: 'Material legado', description: 'Otra publicación' }));
+  // Seed legacy content directly while preserving literal search regression coverage.
+  await db.query('UPDATE publicacion_recurso SET titulo=$1 WHERE id=$2', ['Material 100% _literal_ \\ especial', literal.id]);
   const find = async (q: string) => (await imagesService.getPhysicalgoodsResources(auth, { q, mine: 'true' })).data.map(row => row.id);
   assert.deepEqual(await find(' LIBRO    profesionales '), [book.id]);
   assert.deepEqual(await find('integ EJERC'), [book.id]);
@@ -576,7 +586,7 @@ test('price filtering selects sales only, donation has no displayed price and in
   assert.equal(storageCalls.length, calls);
 });
 test('search only discovers available physical resources in the current campus including mine and never signs excluded results', async () => {
-  const marker = 'scope-' + auth.userId;
+  const marker = 'scope ' + auth.userId.replaceAll('-', '');
   const visible = await create(auth, input({ title: marker }));
   const excluded: string[] = [];
   for (const state of ['RESERVADO', 'FINALIZADO', 'OCULTO', 'CANCELADO']) {

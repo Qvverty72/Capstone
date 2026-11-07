@@ -5,6 +5,7 @@ import { addPhysicalgoodsPhoto, loadPublicationOptions, publishPhysicalgoods } f
 import { pickPublicationPhotos } from '../api/photoPicker';
 import type { PublicationCreated, PublicationInput, PublicationOptions, PublicationPhoto } from '../types/publication';
 import { PHYSICALGOODS_MAX_IMAGES } from '../types/publication';
+import { publicationTextError } from '@/lib/validation/public-content';
 
 /** Gestiona borrador, envío inicial y reintentos de subida de fotos secundarias. */
 export function usePublishPhysicalgoods(onPublished: () => void) {
@@ -65,6 +66,8 @@ export function usePublishPhysicalgoods(onPublished: () => void) {
     if (saving.current || picking.current || loading || !options || (created && !queued.current.length)) return;
     const numericPrice = Number(price.trim().replace(',', '.'));
     if (!title.trim() || !description.trim() || !categoryId || !photo) { setError('Completa el nombre, la descripción, la categoría y la fotografía principal.'); return; }
+    const contentError = !created && publicationTextError(title, description);
+    if (contentError) { setError(contentError); return; }
     if (modality === 'VENTA' && (!Number.isFinite(numericPrice) || numericPrice <= 0)) { setError('Ingresa un precio de venta mayor que cero.'); return; }
     const abort = new AbortController(); pending.current = abort; saving.current = true;
     setBusy(true); setError(null);

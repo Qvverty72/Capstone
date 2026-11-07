@@ -1,12 +1,13 @@
 import type { Category, DictionaryEntry, PhraseEntry, Severity } from 'verlux';
 
 /** Vocabulario propio revisable sin modificar el motor. No usar coincidencias parciales. */
-export const CHILEAN_VOCABULARY_VERSION = '2026-11-06.2';
+export const CHILEAN_VOCABULARY_VERSION = '2026-11-06.3';
 const term = (word: string, severity: Severity, aliases: string[], category: Category = 'insult'): DictionaryEntry => ({
   word, normalized: [word], language: 'es', severity, category, allowPartialMatch: false, aliases,
 });
 
 export const CHILEAN_VOCABULARY: DictionaryEntry[] = [
+  term('hihitler', 'high', ['heilhitler', 'vivahitler'], 'hate'),
   // Familias frecuentes, escritura fonética y abreviaciones de chat.
   term('weón', 'medium', ['weon', 'weones', 'weona', 'weonas', 'hueón', 'hueon', 'hueones', 'hueona', 'hueonas',
     'huevones', 'huevona', 'huevonas', 'güeón', 'gueon', 'güeones', 'gueones', 'güeona', 'gueona', 'güeonas', 'gueonas',
@@ -77,6 +78,7 @@ const phrase = (value: string, severity: Severity, category: Category = 'insult'
  * El motor admite ventanas de2a5palabras; usar frases dentro de ese tamaño.
  */
 export const CHILEAN_PHRASES: PhraseEntry[] = [
+  ...['hi hitler', 'viva hitler'].map(value => phrase(value, 'high', 'hate')),
   ...['ándate a la chucha', 'anda a la chucha', 'ándate a la mierda', 'anda a la mierda', 'vete a la chucha',
     'ándate a la cresta', 'anda a la cresta', 'vete a la cresta', 'concha de tu madre', 'concha de su madre',
     'concha de tu mare', 'concha de su mare'].map(value => phrase(value, 'high')),

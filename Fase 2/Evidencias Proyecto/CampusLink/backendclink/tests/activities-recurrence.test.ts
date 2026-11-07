@@ -45,9 +45,11 @@ test('moderation covers series previews and publication before any occurrence is
   const dependencies: ActivityDependencies = { now: () => now, getActiveMap: async () => map,
     createSeries: async () => { writes++; throw new Error('Unexpected series write'); } };
   for (const official of [false, true]) {
-    const input = parsed({ ...body(), title: 'actividad para i.d.i.o.t.a.s' });
-    await assert.rejects(previewActivitySeries(auth, input, dependencies, official), { status: 400 });
-    await assert.rejects(createActivitySeries(auth, { ...input, previewHash: 'a'.repeat(64) }, dependencies, official), { status: 400 });
+    for (const title of ['actividad para i.d.i.o.t.a.s', 'Hi h!tler', 'Taller 😀']) {
+      const input = parsed({ ...body(), title });
+      await assert.rejects(previewActivitySeries(auth, input, dependencies, official), { status: 400 });
+      await assert.rejects(createActivitySeries(auth, { ...input, previewHash: 'a'.repeat(64) }, dependencies, official), { status: 400 });
+    }
   }
   assert.equal(writes, 0);
 });

@@ -7,6 +7,7 @@ import { attachDigitalFile, downloadDigitalFile, loadDigitalAcademicCatalog, loa
 import { digitalFilesFromWeb, mergeUniqueDigitalFiles, pickDigitalFiles, releaseDigitalFile } from '../api/documentPicker';
 import { saveDigitalFile } from '../api/saveDigitalFile';
 import type { DigitalAcademicCatalog, DigitalAttachment, DigitalFile, DigitalFilters, DigitalInput, DigitalPublication } from '../types/publication';
+import { publicationTextError } from '@/lib/validation/public-content';
 
 export function useDigitalLibrary() {
   const auth = useAuth();
@@ -84,6 +85,8 @@ export function useDigitalLibrary() {
   }
   async function publish() {
     if (saving.current || picking.current) return;
+    const contentError = !currentTarget.current && publicationTextError(title, description);
+    if (contentError) { setError(contentError); return; }
     if (!currentTarget.current && (catalogLoading || catalogError)) { setError('Carga el catálogo académico antes de publicar.'); return; }
     const numericPrice = Number(price.trim().replace(',', '.'));
     if (!currentTarget.current && (!files.length || !title.trim() || !description.trim())) { setError('Completa título, descripción y al menos un archivo PDF.'); return; }

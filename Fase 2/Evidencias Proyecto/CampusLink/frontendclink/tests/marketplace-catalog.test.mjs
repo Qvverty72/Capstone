@@ -1,3 +1,4 @@
+import { publicContent } from './helpers/public-content.mjs';
 import { loadSafeArea } from './helpers/safe-area.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -11,7 +12,7 @@ function load(file, dependencies, globals = {}) {
   const source = fs.readFileSync(new URL('../src/features/marketplace/' + file, import.meta.url), 'utf8');
   const module = { exports: {} };
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-  vm.runInNewContext(code, { module, exports: module.exports, AbortController, ...globals, require(name) {
+  vm.runInNewContext(code, { module, exports: module.exports, AbortController, ...globals, require(name) { if (name.endsWith('/lib/validation/public-content')) return publicContent;
     if (name === '@/lib/layout/safeArea') return loadSafeArea(dependencies['react-native']?.Platform?.OS); assert.ok(Object.hasOwn(dependencies, name), `Unexpected dependency: ${name}`); return dependencies[name];
   } });
   return module.exports;

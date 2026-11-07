@@ -1,3 +1,4 @@
+import { publicContent } from './helpers/public-content.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -12,7 +13,7 @@ function load(path, dependencies = {}, globals = {}) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
   }).outputText;
   vm.runInNewContext(code, { module, exports: module.exports, AbortController, Date, Intl, Error, ...globals,
-    require: name => { assert.ok(Object.hasOwn(dependencies, name), name); return dependencies[name]; } });
+    require: name => { if (name.endsWith('/lib/validation/public-content')) return publicContent;  assert.ok(Object.hasOwn(dependencies, name), name); return dependencies[name]; } });
   return module.exports;
 }
 const creation = load('features/activities/types/creation.ts');
@@ -107,6 +108,21 @@ test('create and edit show a specific local error, retain the draft and submit o
     await q.submit(); assert.match(q.alert(), /término.*anteriores.*día siguiente/); assert.equal(q.calls(), 0);
     assert.equal(nodes(q.render()).find(node => node.type === 'ActivityFields').props.draft.title, valid.title);
     q.update({ endTime: '13:00' }); assert.equal(q.alert(), ''); await q.submit();
+    assert.equal(q.calls(), 1); assert.equal(q.saved(), 1); q.unmount();
+  }
+});
+
+test('create and edit reject the screenshot text, emoji and symbols before any API request', async () => {
+  for (const kind of ['create', 'edit']) {
+    const q = form(kind); q.render();
+    q.update({ ...valid, title: 'Hi h!tler', description: 'Tul_a} 😀', customLabel: 'Sala_A105' });
+    await q.submit();
+    assert.equal(q.calls(), 0);
+    assert.match(q.alert(), /El nombre.*caracteres especiales/);
+    assert.match(q.alert(), /La descripción/);
+    assert.match(q.alert(), /referencia del lugar/);
+    assert.equal(nodes(q.render()).find(node => node.type === 'ActivityFields').props.draft.title, 'Hi h!tler');
+    q.update(valid); await q.submit();
     assert.equal(q.calls(), 1); assert.equal(q.saved(), 1); q.unmount();
   }
 });

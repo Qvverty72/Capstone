@@ -20,7 +20,28 @@ function detectContent(text: string): DetectionResult[] {
     phrase.position[0] <= match.position[0] && phrase.position[1] >= match.position[1]));
   // La frase completa sustituye sus palabras interiores en el mensaje, sin perder
   // otras expresiones del mismo campo. Toda detección sigue bloqueando.
-  return [...words, ...phrases].sort((a, b) => a.position[0] - b.position[0]);
+  // Separar cada letra con espacios tampoco debe eludir la moderación.
+  const separated: DetectionResult[] = [];
+  const letters = '[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9]';
+  const spaced = new RegExp(`(?<!${letters})(?:${letters} +){1,}${letters}(?!${letters})`, 'gu');
+  const normalized = text.normalize('NFC');
+  for (const match of normalized.matchAll(spaced)) {
+    for (const found of moderator.detect(match[0].replace(/ /g, ''))) {
+      separated.push({ ...found, original: match[0], position: [match.index!, match.index! + match[0].length] });
+    }
+  }
+  const compacted = normalized.replace(spaced, match => match.replace(/ /g, ''));
+  if (compacted !== normalized) {
+    separated.push(...phraseModerator.detect(compacted).filter(match => match.matchType === 'phrase' && customPhrases.has(match.matched)));
+  }
+  return [...words, ...phrases, ...separated].sort((a, b) => a.position[0] - b.position[0]);
+}
+
+function formatError(field: string, text: string): string | null {
+  const multiline = field === 'description';
+  const allowed = multiline ? /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 \r\n]*$/u : /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 ]*$/u;
+  if (allowed.test(text.normalize('NFC'))) return null;
+  return `${labels[field] ?? 'El texto'} solo admite letras del español, números y espacios${multiline ? ' y saltos de línea' : ''}. Elimina los símbolos, caracteres especiales y emojis para continuar.`;
 }
 
 const categories: Record<Category, string> = { insult: 'insulto', slur: 'insulto discriminatorio', sexual: 'expresión sexual explícita',
@@ -46,14 +67,15 @@ export function assertPublicContent(fields: Readonly<Record<string, string | und
       if (!unique.has(key)) unique.set(key, detection);
     }
     const matches = [...unique.values()];
-    if (!matches.length) continue;
     for (let offset = 0; offset < matches.length && offset < groupsPerField * 3 && details.length < 20; offset += 3) {
       const shown = matches.slice(offset, offset + 3).map(match => `«${displayTerm(match.original)}» (${categories[match.category]}, severidad ${severities[match.severity]})`);
       const rest = matches.length - offset - shown.length;
       const remaining = offset + 3 >= groupsPerField * 3 && rest > 0 ? ` y ${rest} expresiones más` : '';
       details.push({ field, message: `${labels[field] ?? 'El texto'} contiene lenguaje bloqueado: ${shown.join('; ')}${remaining}. Elimina o reemplaza todas las expresiones bloqueadas y vuelve a intentarlo.` });
     }
+    const invalidFormat = formatError(field, text);
+    if (invalidFormat && details.length < 20) details.push({ field, message: invalidFormat });
   }
   if (details.length) throw new ApiError(400, 'VALIDATION_ERROR',
-    'No se puede guardar el contenido porque contiene lenguaje inapropiado. Revisa las expresiones señaladas en cada campo.', { details });
+    'No se puede guardar el contenido. Revisa los caracteres y las expresiones señaladas en cada campo.', { details });
 }

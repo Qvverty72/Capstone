@@ -55,6 +55,8 @@ test('moderation rejects creation in every public text field without writes and 
     return toVisibleActivity(document);
   } };
   for (const patch of [{ title: 'actividad para idiotas' }, { description: 'weones' },
+    { title: 'Hi h!tler' }, { description: 'Tul_a}' }, { title: 'Taller 😀' }, { description: 'Texto, nuevo' },
+    { location: { ...body().location, customLabel: 'Sala_A105' } },
     { location: { ...body().location, customLabel: 'chucha' } }]) {
     await assert.rejects(createCommunityActivity(auth, parsed({ ...body(), ...patch }), dependencies), { status: 400, code: 'VALIDATION_ERROR' });
   }
@@ -271,8 +273,9 @@ test('form errors identify the invalid field, its cause and how to correct it wi
   const afterEnd = Date.parse('2100-01-01T00:00:00Z');
   assert.match(validateActivityDraft(draft, locations, afterEnd).error!, /ya terminó.*posteriores.*inicio puede estar en el pasado/);
   assert.ok(validateActivityDraft(draft, locations, afterEnd, { allowEnded: true }).input);
-  assert.ok(validateActivityDraft({ ...draft, description: 'Descripción\ncon saltos\ty tabulaciones',
+  assert.ok(validateActivityDraft({ ...draft, description: 'Descripción\ncon saltos y espacios',
     startDate: '10/10/2099', endDate: '12/10/2099', endTime: '01:00' }, locations, new Date(2099, 9, 11).getTime()).input);
+  assert.ok(validateActivityDraft({ ...draft, description: 'Descripción\tcon tabulaciones' }, locations, 0).error);
 });
 
 test('server validation distinguishes content errors and returns the location field that must be corrected', () => {

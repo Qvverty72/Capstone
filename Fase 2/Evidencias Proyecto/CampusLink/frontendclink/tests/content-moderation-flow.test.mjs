@@ -1,3 +1,4 @@
+import { publicContent } from './helpers/public-content.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -10,7 +11,7 @@ function load(path, dependencies = {}, globals = {}) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
   vm.runInNewContext(code, { module, exports: module.exports, Error, AbortController, ...globals,
-    require: name => { assert.ok(Object.hasOwn(dependencies, name), name); return dependencies[name]; } });
+    require: name => { if (name.endsWith('/lib/validation/public-content')) return publicContent;  assert.ok(Object.hasOwn(dependencies, name), name); return dependencies[name]; } });
   return module.exports;
 }
 const details = [{ field: 'title', message: 'El título contiene «idi0tas» (insulto, severidad media). Elimina o reemplaza la expresión.' },
@@ -79,4 +80,37 @@ test('physical edit keeps the rejected draft and allows a corrected retry', asyn
   assert.match(resources.error, /idi0tas/); assert.match(resources.error, /weá/);
   reject = false; state.setDraft({ ...state.draft, title: 'Apuntes de cálculo', description: 'Material académico' });
   state = render(); assert.equal(await state.save(), true); state = render(); assert.equal(state.draft, null); assert.equal(calls.length, 2);
+});
+
+test('both publication editors reject symbols locally, preserve version and save a corrected draft', async () => {
+  for (const kind of ['physical', 'digital']) {
+    const h = runtime(), calls = [];
+    const resource = { id: 'resource', title: 'Original', description: 'Material académico', modality: 'DONACION',
+      condition: 'USADO', price: null, updatedAt: 'original-version', owner: { id: 'owner' } };
+    let render;
+    if (kind === 'physical') {
+      const resources = { selectedId: resource.id, gallery: resource,
+        change: operation => operation(new AbortController().signal) };
+      const hook = load('features/marketplace/physicalgoods/hooks/useEditPhysicalgoods.ts', { react: h.react,
+        '@/features/auth/hooks/useAuth': { useAuth: () => ({ identity: { userId: 'owner' } }) },
+        '../api/physicalgoodsApi': { updatePhysicalgoods: async (id, body) => { calls.push(body); } } });
+      render = () => h.render(() => hook.useEditPhysicalgoods(resources));
+      render().start();
+    } else {
+      const hook = load('features/marketplace/elibrary/hooks/useEditDigitalPublication.ts', { react: h.react,
+        '@/lib/api/authenticated-request': transport,
+        '../api/elibraryApi': { editDigitalContent: async (id, body) => { calls.push(body); return { ...resource, ...body }; } } });
+      render = () => h.render(() => hook.useEditDigitalPublication(resource, () => {}));
+    }
+    const setContent = (title, description) => { const state = render();
+      if (kind === 'physical') state.setDraft({ ...state.draft, title, description });
+      else { state.setTitle(title); state.setDescription(description); }
+    };
+    setContent('Hi h!tler', 'Tul_a} 😀'); await render().save();
+    const failed = render(); assert.equal(calls.length, 0); assert.match(failed.error, /El nombre/);
+    assert.equal(kind === 'physical' ? failed.draft.updatedAt : failed.resource.updatedAt, 'original-version');
+    assert.equal(kind === 'physical' ? failed.draft.title : failed.title, 'Hi h!tler');
+    setContent('Material académico 2', 'Guía para estudiantes'); await render().save();
+    assert.equal(calls.length, 1); assert.equal(calls[0].updatedAt, 'original-version');
+  }
 });

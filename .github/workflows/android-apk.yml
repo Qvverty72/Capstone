@@ -2,11 +2,6 @@ name: Android APK
 
 on:
   workflow_dispatch:
-  push:
-    branches: [prerelease]
-    paths:
-      - '.github/workflows/android-apk.yml'
-      - 'Fase 2/Evidencias Proyecto/CampusLink/frontendclink/**'
 
 permissions:
   contents: read

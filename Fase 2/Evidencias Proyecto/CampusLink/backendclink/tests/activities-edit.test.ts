@@ -53,6 +53,8 @@ test('moderation rejects edit and preview before save, preserving original conte
   let writes = 0;
   const dependencies: ActivityEditDependencies = { ...deps(current), saveEdit: async () => { writes++; throw new Error('Unexpected save'); } };
   for (const patch of [{ title: 'actividad para idiotas' }, { description: 'aweonaos' },
+    { title: 'Hi h!tler' }, { description: 'Tul_a}' }, { title: 'Taller 😀' },
+    { location: { ...body().location, customLabel: 'Sala_A105' } },
     { location: { ...body().location, customLabel: 'weá' } }]) {
     const input = parsed({ ...body(), ...patch });
     await assert.rejects(preview(auth, id, input, dependencies), { status: 400 });

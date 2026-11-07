@@ -181,6 +181,13 @@ test('donation has no sale price', async () => {
 });
 
 test('moderation rejects digital metadata through API before Storage and preserves original, version and history on edit', async () => {
+  for (const text of ['Hi h!tler', 'Tul_a}', 'Material 😀', 'Texto, nuevo']) {
+    for (const field of ['title', 'description']) {
+      const response = await post(input({ [field]: text }));
+      assert.equal(response.status, 400);
+      assert.equal((await response.json()).error.code, 'VALIDATION_ERROR');
+    }
+  }
   const rejected = await post(input({ title: 'Apuntes para idiotas', description: 'aweonaos y weá' }));
   assert.equal(rejected.status, 400);
   const error = (await rejected.json()).error;
@@ -194,7 +201,8 @@ test('moderation rejects digital metadata through API before Storage and preserv
   const auditBefore = await db.query('SELECT count(*)::int AS total FROM auditoria');
   const storageBefore = storageCalls.length, originalBytes = [...objects.values()].map(bytes => Buffer.from(bytes));
   const raw = { title: saved.title, description: saved.description, modality: saved.modality, price: saved.price, updatedAt: saved.updatedAt };
-  for (const patch of [{ title: 'weones' }, { description: 'weá' }, { description: 'ctm' }]) {
+  for (const patch of [{ title: 'weones' }, { description: 'weá' }, { description: 'ctm' },
+    { title: 'Hi h!tler' }, { description: 'Tul_a}' }, { description: 'Material 😀' }]) {
     const response = await digitalJson('/' + saved.id, 'PATCH', { ...raw, ...patch });
     assert.equal(response.status, 400); assert.equal((await response.json()).error.code, 'VALIDATION_ERROR');
   }
@@ -286,10 +294,11 @@ test('rejects privileged fields, malformed metadata, non-multipart and malicious
   assert.equal((await originalFetch(base, { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: '{}' })).status, 400);
   assert.equal(uploads.length, 0); await noPublication();
 });
-test('text that resembles SQL is stored as data with parameterized queries', async () => {
+test('punctuated SQL input is rejected before publishing and cannot change the schema', async () => {
   const title = "Apuntes'); DROP TABLE perfil_usuario; --";
-  const saved = await service.createDigitalPublication(auth, input({ title }), file());
-  assert.equal((await service.getDigitalPublications(auth, saved.id))[0].title, title);
+  await assert.rejects(service.createDigitalPublication(auth, input({ title }), file()), { status: 400, code: 'VALIDATION_ERROR' });
+  assert.equal(uploads.length, 0);
+  await noPublication();
   assert.ok((await db.query('select id from perfil_usuario where id=$1', [auth.userId])).rows.length);
 });
 test('same institution other campus can list/read; foreign institution cannot and origin stays unchanged', async () => {
@@ -650,7 +659,7 @@ test('audit projection retains historical academic names/codes without arbitrary
 });
 
 test('digital search combines text, modality and direct multiple associations without duplicate rows', async () => {
-  const c = await academicCatalog(), marker = randomUUID();
+  const c = await academicCatalog(), marker = randomUUID().replaceAll('-', '');
   const sale = await service.createDigitalPublication(auth, input({ title: marker + ' Apuntes', careerIds: [c.careerA,c.careerB], subjectIds: [c.shared,c.other] }), file());
   await service.createDigitalPublication(auth, input({ description: marker, modality: 'DONACION', price: null }), file());
   await switchCampus(sibling);
@@ -662,7 +671,7 @@ test('digital search combines text, modality and direct multiple associations wi
   await switchCampus(foreignCampus, foreignInstitution); assert.deepEqual((await (await get(`?q=${marker}`)).json()).data, []);
 });
 test('digital search paginates deterministically and hides withdrawn/hidden resources', async () => {
-  const marker = randomUUID(), ids = [];
+  const marker = randomUUID().replaceAll('-', ''), ids = [];
   for (let i=0;i<8;i++) ids.push((await service.createDigitalPublication(auth, input({title:marker+' '+i}), file())).id);
   const pages = [];
   for (let page=1;page<=3;page++) { const response = await get(`?q=${marker}&page=${page}&limit=3`); assert.equal(response.status,200); pages.push(await response.json()); }
@@ -674,8 +683,10 @@ test('digital search paginates deterministically and hides withdrawn/hidden reso
   assert.deepEqual((await (await get(`?q=${marker}&page=9`)).json()).data,[]);
 });
 test('digital search treats wildcard/SQL-like text literally and rejects malformed/privileged filters', async () => {
-  const marker = randomUUID();
-  await service.createDigitalPublication(auth, input({title:marker+' 100%_\\'}), file());
+  const marker = randomUUID().replaceAll('-', '');
+  const legacy = await service.createDigitalPublication(auth, input({title:marker}), file());
+  // Old publications remain searchable; the new form no longer accepts this title.
+  await db.query('UPDATE publicacion_recurso SET titulo=$1 WHERE id=$2', [marker+' 100%_\\', legacy.id]);
   assert.equal((await (await get('?q='+encodeURIComponent(marker+' 100%_\\'))).json()).data.length,1);
   assert.deepEqual((await (await get('?q='+encodeURIComponent("'; DROP TABLE carrera; --"))).json()).data,[]);
   for (const query of ['campusId='+campus,'institutionId='+institution,'ownerId='+auth.userId,'page=0','limit=101','page=2&page=3','q[]=x','q='+('x'.repeat(201)),"careerId=bad",'subjectId=bad','modality=AMBAS']) assert.equal((await get('?'+query)).status,400,query);
@@ -1010,18 +1021,18 @@ test('digital editor rejects privileged/non-owner inputs and rollback/uncertain 
   assert.equal((await db.query('SELECT * FROM auditoria WHERE entidad_id=$1',[saved.id])).rows.length,2);assert.equal(objects.size,1);
 });
 test('digital recommendations use academic cold-start, exclude own/acquired/hidden/foreign and paginate with explanations',async()=>{
-  const c=await academicCatalog(),matching=await service.createDigitalPublication(auth,input({title:'Afinidad '+randomUUID(),careerIds:[c.careerA],subjectIds:[c.shared]}),file()),generic=await service.createDigitalPublication(auth,input({title:'Reciente '+randomUUID()}),file());
+  const c=await academicCatalog(),matching=await service.createDigitalPublication(auth,input({title:'Afinidad '+randomUUID().replaceAll('-', ''),careerIds:[c.careerA],subjectIds:[c.shared]}),file()),generic=await service.createDigitalPublication(auth,input({title:'Reciente '+randomUUID().replaceAll('-', '')}),file());
   const receiver=await peer();await db.query('INSERT INTO usuario_carrera(perfil_usuario_id,carrera_id) VALUES($1,$2)',[receiver.userId,c.careerA]);
   current=receiver;let result=await(await get('/recommendations?limit=100')).json();assert.equal(result.data[0].id,matching.id);assert.ok(result.data[0].recommendation.reasons.includes('Coincide con tus carreras'));
   assert.ok(result.data[0].recommendation.score>=50);assert.doesNotMatch(JSON.stringify(result.data),/storage_path|bucket_id|signedUrl/);
   const {trades,tradeId}=await requestAndAccept(matching,receiver);await trades.transitionDigitalTrade(auth,matching.id,tradeId,{},'CONFIRMAR');await trades.transitionDigitalTrade(receiver,matching.id,tradeId,{},'CONFIRMAR');
   result=await(await get('/recommendations?limit=100')).json();assert.ok(!result.data.some((row:{id:string})=>row.id===matching.id));assert.ok(result.data.some((row:{id:string})=>row.id===generic.id));
-  const own=await service.createDigitalPublication(receiver,input({title:'Propio '+randomUUID()}),file());assert.ok(!(await(await get('/recommendations?limit=100')).json()).data.some((row:{id:string})=>row.id===own.id));
+  const own=await service.createDigitalPublication(receiver,input({title:'Propio '+randomUUID().replaceAll('-', '')}),file());assert.ok(!(await(await get('/recommendations?limit=100')).json()).data.some((row:{id:string})=>row.id===own.id));
   await db.query("UPDATE publicacion_recurso SET estado_publicacion='OCULTO' WHERE id=$1",[generic.id]);assert.ok(!(await(await get('/recommendations?limit=100')).json()).data.some((row:{id:string})=>row.id===generic.id));
   current=await peer(foreignCampus,foreignInstitution);assert.deepEqual((await(await get('/recommendations')).json()).data,[]);
 });
 test('explicit views feed recommendations once per opening, GETs never record views and requests remain separate signals',async()=>{
-  const saved=await service.createDigitalPublication(auth,input({title:'Interes '+randomUUID()}),file()),receiver=await peer();current=receiver;
+  const saved=await service.createDigitalPublication(auth,input({title:'Interes '+randomUUID().replaceAll('-', '')}),file()),receiver=await peer();current=receiver;
   await get('/'+saved.id);await get('/'+saved.id);
   assert.equal((await db.query('SELECT * FROM interaccion_recurso WHERE publicacion_id=$1',[saved.id])).rows.length,0);
   const view=await import('../src/modules/analytics/services/analytics.service.js'),operationId=randomUUID();

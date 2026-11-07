@@ -1,3 +1,4 @@
+import { publicContent } from './helpers/public-content.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -11,7 +12,7 @@ function load(sourcePath, dependencies) {
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const module = { exports: {} };
   vm.runInNewContext(compiled, { module, exports: module.exports, setTimeout, clearTimeout, console,
-    AbortController, require: name => { assert.ok(Object.hasOwn(dependencies, name), name); return dependencies[name]; } });
+    AbortController, require: name => { if (name.endsWith('/lib/validation/public-content')) return publicContent;  assert.ok(Object.hasOwn(dependencies, name), name); return dependencies[name]; } });
   return module.exports;
 }
 

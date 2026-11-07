@@ -3,6 +3,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth';
 import type { usePhysicalgoodsResources } from './usePhysicalgoodsResources';
 import { updatePhysicalgoods, withdrawPhysicalgoods } from '../api/physicalgoodsApi';
 import type { PublicationInput } from '../types/publication';
+import { publicationTextError } from '@/lib/validation/public-content';
 
 type Draft = Pick<PublicationInput,'title'|'description'|'condition'|'modality'> & { price: string; updatedAt: string };
 /** Prepara y guarda ediciones/retiradas respetando propiedad y versión de la galería. */
@@ -19,6 +20,8 @@ export function useEditPhysicalgoods(r: ReturnType<typeof usePhysicalgoodsResour
   /** Valida modalidad y precio, y envía actualización con `updatedAt` original. */
   async function save() {
     if (!draft || !r.gallery) return false;
+    const contentError = publicationTextError(draft.title, draft.description);
+    if (contentError) { setError(contentError); return false; }
     const id = r.gallery.id, value = draft.price.trim().replace(',', '.'), price = draft.modality === 'DONACION' ? null : Number(value);
     if (!draft.title.trim() || !draft.description.trim() || (draft.modality === 'VENTA' && (!value || !/^\d+(?:\.\d+)?$/.test(value) || !Number.isFinite(price) || price! <= 0 || price! > Number.MAX_SAFE_INTEGER))) { setError('Completa nombre, descripción y un precio de venta válido.'); return false; }
     setError(null);
