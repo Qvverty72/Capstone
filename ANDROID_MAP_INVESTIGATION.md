@@ -120,9 +120,25 @@ los [registros nativos para investigar cierres](https://docs.expo.dev/debugging/
 Las pruebas JavaScript y una compilación exitosa no verifican que la vista GL
 optimizada pueda instanciarse en un teléfono.
 
-## Alcance de esta investigación
+## Alcance de la investigación inicial
 
 No se modificó el código de la aplicación, no se generó otra APK y no se
 desplegó nada. La inspección estática del DEX se contrastó con `dexdump`; sus
 archivos de trabajo permanecen ignorados en `backendclink/qa/local/`.
 No se conectó un teléfono ni se reprodujo el cierre en un dispositivo local.
+
+## Corrección para la APK de prueba 0.1.1
+
+El usuario autorizó una nueva APK para probar el mapa en Android 14. En esta
+rama se aplicaron las dos reglas de conservación desde el script versionado
+posterior al prebuild; también se aplican si la firma ya estaba configurada.
+R8 permanece activo. `app.json` pasa a versión 0.1.1 y `versionCode` 2.
+
+La compilación manual ahora revisa el DEX optimizado y su mapping: exige una
+`GLView` concreta con constructor público `(Context, AppContext)` y un método
+`public void flush()` en `GLContext`. Esto comprueba el resultado compilado y
+rechaza una regresión aunque las reglas de entrada parezcan correctas. La firma
+privada se conserva localmente para permitir instalar esta APK como actualización.
+
+Pendientes: terminar la compilación, comprobar y firmar el artefacto, entregar
+el descargable y realizar la prueba del mapa en el teléfono del usuario.

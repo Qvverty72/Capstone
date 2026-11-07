@@ -42,6 +42,7 @@ jobs:
           test -n "$EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
           npm ci --include=dev
           npm run typecheck
+          node --test tests/android-release.test.mjs
           npm run poi:images
           npx expo prebuild --platform android --no-install
           node scripts/configure-android-release.mjs
@@ -65,11 +66,26 @@ jobs:
           fi
           unzip -Z1 "$apk" > "$RUNNER_TEMP/apk-contents.txt"
           grep -Fxq 'assets/index.android.bundle' "$RUNNER_TEMP/apk-contents.txt"
+          version=$(node -p "require('./app.json').expo.version")
+          version_code=$(node -p "require('./app.json').expo.android.versionCode")
+          grep -Fq "versionCode='$version_code'" "$RUNNER_TEMP/apk-badging.txt"
+          grep -Fq "versionName='$version'" "$RUNNER_TEMP/apk-badging.txt"
+          mapping=android/app/build/outputs/mapping/release/mapping.txt
+          test -s "$mapping"
+          dex_dir="$RUNNER_TEMP/campuslink-dex"
+          mkdir -p "$dex_dir"
+          unzip -j "$apk" 'classes*.dex' -d "$dex_dir"
+          for dex in "$dex_dir"/*.dex; do
+            "$build_tools/dexdump" -l xml "$dex" > "$dex.xml"
+          done
+          python3 scripts/verify-android-map-release.py "$mapping" "$dex_dir"/*.xml
           mkdir -p artifacts
-          cp "$apk" artifacts/CampusLink-0.1.0-android-unsigned.apk
+          apk_name="CampusLink-$version-android-unsigned.apk"
+          cp "$apk" "artifacts/$apk_name"
+          cp "$mapping" artifacts/R8-mapping.txt
           cd artifacts
-          sha256sum CampusLink-0.1.0-android-unsigned.apk > SHA256SUMS.txt
-          printf 'CampusLink 0.1.0\nPackage: cl.campuslink.app\nSource: %s\nAPI: %s\nArchitectures: arm64-v8a, armeabi-v7a\nStandalone release APK; local signing required before installation.\n' "$GITHUB_SHA" "$EXPO_PUBLIC_API_URL" > BUILD.txt
+          sha256sum "$apk_name" > SHA256SUMS.txt
+          printf 'CampusLink %s\nVersion code: %s\nPackage: cl.campuslink.app\nSource: %s\nAPI: %s\nArchitectures: arm64-v8a, armeabi-v7a\nR8: enabled; GLView constructor and GLContext.flush verified in DEX.\nStandalone release APK; local signing required before installation.\n' "$version" "$version_code" "$GITHUB_SHA" "$EXPO_PUBLIC_API_URL" > BUILD.txt
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: CampusLink-Android-APK
