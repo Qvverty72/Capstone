@@ -18,7 +18,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: android-apk-${{ github.ref }}
+  group: mobile-${{ github.ref }}-${{ inputs.target }}
   cancel-in-progress: false
 
 jobs:
