@@ -1,6 +1,7 @@
 # CampusLink: Android, iPhone y web móvil
 
 Versión en preparación: **0.1.2**. Rama: `build/mobile-cross-platform`.
+Dispositivo iPhone disponible comunicado por el usuario: **iPhone 17, iOS 26.3**.
 
 ## Compatibilidad objetivo
 
@@ -58,3 +59,20 @@ directamente al abrir el enlace en Safari.
 Las pruebas de inicio de simulador/emulador no comprueban por sí solas los
 flujos autenticados ni la interacción con el mapa. Los resultados, fuentes y
 descargables se añadirán aquí al terminar las comprobaciones.
+
+## Web móvil: primeras comprobaciones
+
+- Typecheck y exportación web correctos; 453 pruebas frontend aprobadas.
+- Pantalla de acceso en Chromium y WebKit: 320×568, 393×852, 412×915 y 852×393;
+  sin errores JavaScript ni desbordamiento horizontal en los ocho casos.
+- Mapa con GLB real y configuración lógica de los diez edificios, obtenida
+  mediante una lectura de MongoDB sin modificaciones. La sesión y las respuestas
+  de API se simulan localmente, sin escribir datos de usuarios en producción.
+- Renderizado y navegación perfil → mapa → perfil → mapa comprobados en
+  Chromium/WebKit actuales, y en Chromium 112 y WebKit 16.4.
+- Protección web ante ausencia de WebGL2: aviso recuperable, reintento y regreso
+  al perfil comprobados en los dos motores actuales.
+
+La protección está en `CampusMapViewport.web.tsx`, que Metro excluye de Android
+e iOS. Las builds nativas en curso proceden de `19d5213`; el cambio posterior
+solo afecta a la web y a documentación.

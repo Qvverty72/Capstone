@@ -902,6 +902,19 @@ La suite normal omite únicamente los dos casos que requieren Redis externo. Los
 de dominio con muchas solicitudes elevan sus cuotas por configuración; los casos específicos
 de rate limiting usan umbrales pequeños y verifican el429 real.
 
+## Contenido público de actividades y recursos
+
+Las altas y ediciones de actividades, recursos físicos y recursos digitales
+validan sus textos antes de escribir datos o subir archivos. Admiten letras del
+español, números y espacios; la descripción admite además saltos de línea.
+Se rechazan símbolos, emojis, caracteres invisibles y alfabetos de apariencia
+similar. El catálogo de moderación español/inglés incluye vocabulario chileno
+y revisa también variantes con números o letras separadas por espacios.
+
+Un rechazo responde con `400 VALIDATION_ERROR` y detalles por campo. El cliente
+conserva el borrador para corregirlo. Esta regla se aplica a las nuevas altas y
+ediciones; no elimina ni modifica automáticamente publicaciones existentes.
+
 ## Referencias técnicas
 
 [Inicialización Supabase JS](https://supabase.com/docs/reference/javascript/initializing), [getUser](https://supabase.com/docs/reference/javascript/auth-getuser), [Auth en React Native](https://supabase.com/docs/guides/auth/quickstarts/react-native), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security) y [opciones de MongoDB Node](https://www.mongodb.com/docs/drivers/node/current/connect/connection-options/).
