@@ -1,3 +1,8 @@
+/**
+ * Cliente de denuncias y revisión: construye rutas con segmentos codificados,
+ * valida acuses específicos y diferencia JSON, URLs firmadas e evidencia binaria.
+ * El campus enviado contextualiza la consulta; la autorización corresponde al servidor.
+ */
 import { authenticatedEnvelopeRequest } from '@/lib/api/authenticated-request';
 
 import type { ActivityReportInput, ActivityReportReceipt } from '@/features/activities/types/activityReport';
@@ -32,6 +37,10 @@ export async function downloadReportedFile(campusId: string, id: string, fileId:
   return response.blob();
 }
 
+/**
+ * Contrasta IDs, campus, estado y fecha del acuse antes de mostrar una confirmación.
+ * Un HTTP exitoso con cuerpo incoherente no se presenta como denuncia confirmada.
+ */
 function validateActivityReceipt(receipt: ActivityReportReceipt, campusId: string, activityId: string): ActivityReportReceipt {
   if (!receipt || !/^[0-9a-f-]{36}$/i.test(receipt.id) || receipt.campusId !== campusId
     || receipt.activityId !== activityId.toLowerCase()

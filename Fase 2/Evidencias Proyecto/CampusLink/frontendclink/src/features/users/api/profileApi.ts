@@ -1,3 +1,8 @@
+/**
+ * Adaptador HTTP del perfil académico con transporte autenticado común.
+ * Las lecturas reciben AbortSignal; el guardado serializa campos editables y updatedAt.
+ * Conserva 409/401/403 para que el hook decida recarga o revalidación de identidad.
+ */
 import { AuthApiError, authenticatedRequest } from '@/lib/api/authenticated-request';
 
 import type { AcademicOptions, AcademicProfile } from '../types/profile';

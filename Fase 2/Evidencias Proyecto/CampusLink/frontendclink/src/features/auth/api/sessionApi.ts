@@ -1,3 +1,8 @@
+/**
+ * Cliente de endpoints públicos de sesión: envía credenciales al backend y presenta
+ * errores estables. Solo login instala tokens en el SDK; recuperación no inicia una
+ * sesión ordinaria ni devuelve su sesión temporal al resto de la aplicación.
+ */
 import { getSupabaseClient } from './supabaseClient';
 
 /** Envía operaciones públicas de sesión y adapta fallos HTTP a mensajes de UI. */
