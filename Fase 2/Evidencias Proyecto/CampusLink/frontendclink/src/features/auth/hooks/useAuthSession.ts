@@ -1,3 +1,8 @@
+/**
+ * Estado de sesión de la aplicación: combina eventos del SDK con GET /auth/me.
+ * Separa sesión local, identidad de servidor y estado visual; usa refs para cancelar
+ * solicitudes y conservar la última identidad sin convertirlas en datos de interfaz.
+ */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
@@ -15,6 +20,10 @@ export function useAuthSession(): AuthContextValue {
   const [denialCode, setDenialCode] = useState<string | null>(null);
   const [restored, setRestored] = useState(false);
   const [revision, setRevision] = useState(0);
+/**
+ * La referencia identifica la consulta vigente entre renders. Abortar y comprobar
+ * signal evita que una respuesta antigua reponga la cuenta tras cambiar de sesión.
+ */
   const pendingRequest = useRef<AbortController | null>(null);
   const verifiedIdentity = useRef<AuthIdentity | null>(null);
   const deniedAccount = useRef<string | null>(null);
@@ -93,6 +102,10 @@ export function useAuthSession(): AuthContextValue {
     const abort = new AbortController();
     pendingRequest.current = abort;
     const previousIdentity = verifiedIdentity.current;
+/**
+ * Revalidar la misma cuenta conserva sus pantallas ante un fallo temporal de red.
+ * Un rechazo 401/403 sí retira el contexto; la API continúa comprobando cada permiso.
+ */
     const revalidating = previousIdentity?.userId === session.user.id;
     if (!revalidating) {
       verifiedIdentity.current = null;

@@ -1,3 +1,8 @@
+/**
+ * Singleton del SDK Supabase en el cliente Expo, con polyfill de URL y processLock.
+ * En nativo persiste sesión mediante AsyncStorage; en web usa la persistencia del SDK.
+ * Solo admite clave pública/publishable o anon; los secretos de servidor no pertenecen al bundle.
+ */
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, processLock, type SupabaseClient } from '@supabase/supabase-js';
