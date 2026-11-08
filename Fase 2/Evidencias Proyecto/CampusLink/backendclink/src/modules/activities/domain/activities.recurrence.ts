@@ -1,3 +1,8 @@
+/**
+ * Expansión pura de series con Temporal y zona horaria IANA explícita.
+ * Calcula días de calendario en vez de sumar milisegundos fijos: las transiciones
+ * de horario de verano pueden cambiar la duración real entre dos fechas.
+ */
 import { Temporal } from '@js-temporal/polyfill';
 import { createHash } from 'node:crypto';
 import { ApiError } from '../../../shared/errors/api-error.js';
@@ -17,6 +22,10 @@ export function expandActivityRecurrence(input: CreateActivitySeriesInput, campu
   const daySpan = firstDate.until(end.toPlainDate()).days;
   const occurrences: ActivityRecurrencePreview['occurrences'] = []; const skipped: ActivityRecurrencePreview['skipped'] = [];
   const exclusions = new Set(rule.excludedDates); const candidateDates = new Set<string>();
+/**
+ * La política reject evita elegir silenciosamente una hora duplicada o inexistente.
+ * El usuario debe corregir el horario o excluir la fecha que entra en conflicto.
+ */
   const inZone = (date: Temporal.PlainDate, clock: Temporal.PlainTime) => date.toPlainDateTime(clock)
     .toZonedDateTime(rule.timeZone, { disambiguation: 'reject' });
   for (let period = 0; period <= 732; period++) {
@@ -54,6 +63,10 @@ export function expandActivityRecurrence(input: CreateActivitySeriesInput, campu
   }
   if (!occurrences.length) throw new ApiError(400, 'VALIDATION_ERROR', 'La repetición no genera ninguna actividad. Amplía la fecha de «¿Hasta cuándo?», revisa los días seleccionados o quita alguna fecha a omitir.');
   if (rule.excludedDates.some(date => !candidateDates.has(date))) throw new ApiError(400, 'VALIDATION_ERROR', 'Una fecha a omitir no coincide con los días de la repetición. Elimina esa fecha o ajusta la repetición para que la incluya.');
+/**
+ * El hash cubre entrada y expansión completa, incluidas exclusiones y omisiones.
+ * Permite confirmar que se publica la misma serie que se presentó en la vista previa.
+ */
   const fingerprint = { campusId, type, title: input.title, description: input.description, startAt: input.startAt.toISOString(),
     endAt: input.endAt.toISOString(), location: input.location, recurrence: rule, occurrences, skipped };
   return { campusId, type, recurrence: rule, occurrences, skipped,
