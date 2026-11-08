@@ -1,3 +1,8 @@
+/**
+ * Extractor de muestra textual con pdfjs-dist dentro de un worker_threads aislado.
+ * Limita a dos extracciones concurrentes por proceso, ocho segundos y heap de 128 MB.
+ * El worker no hereda el entorno del servidor y descarta stdout/stderr del parser.
+ */
 import { Worker } from 'node:worker_threads';
 import { pathToFileURL } from 'node:url';
 import { ApiError } from '../../../../shared/errors/api-error.js';
@@ -23,6 +28,11 @@ const {parentPort,workerData}=require('node:worker_threads');
 })();`;
 
 /** El cliente no elige páginas ni offsets; nunca recibe el PDF original ni una página PDF reutilizable. */
+/**
+ * Recibe bytes ya validados y examina solo texto de la primera página.
+ * @returns Fragmento de hasta 400 caracteres o null si no hay muestra suficiente/legible.
+ * No realiza OCR; finally termina el worker y libera el cupo incluso si vence el plazo.
+ */
 export async function extractDigitalPreview(bytes: Buffer): Promise<string | null> {
   if (running >= 2) throw new ApiError(503,'DEPENDENCY_UNAVAILABLE','La vista previa está ocupada. Inténtalo nuevamente.');
   running++;

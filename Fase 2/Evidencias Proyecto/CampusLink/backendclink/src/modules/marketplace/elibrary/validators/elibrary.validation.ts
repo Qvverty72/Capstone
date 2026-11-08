@@ -1,3 +1,8 @@
+/**
+ * Validadores digitales de metadatos, UUID, catálogo y contenido PDF.
+ * El archivo reúne validación de negocio y recorrido binario con pdf-lib; su extensión
+ * refleja esa responsabilidad mixta. Las reglas se aplican antes de subir a Storage.
+ */
 import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFObject, PDFStream, PDFString } from 'pdf-lib';
 import { ApiError } from '../../../../shared/errors/api-error.js';
 import type { DigitalAcademicCatalog, DigitalInput, DigitalUpload } from '../types/elibrary.types.js';
@@ -140,6 +145,12 @@ function inspectDigitalPdf(pdf: PDFDocument): void {
 }
 
 /** Política aprobada en QA-02: PDF sin cifrado/adjuntos/scripts; enlaces HTTPS, correo y teléfono. */
+/**
+ * Comprueba Buffer, 25 MiB, nombre/MIME, cabecera/cierre, cifrado y estructura.
+ * Inspecciona acciones/adjuntos/enlaces sin visitar sus destinos ni alterar bytes.
+ * @returns Archivo normalizado conservando el Buffer; lanza 400/413 si se rechaza.
+ * Esta política no equivale a un antivirus ni a una prueba absoluta de inocuidad.
+ */
 export async function validateDigitalFile(file: DigitalUpload | undefined): Promise<DigitalUpload> {
   if (!file || !Buffer.isBuffer(file.bytes)) return invalidDigital('file', 'Selecciona un archivo PDF.');
   if (!file.bytes.length) return invalidDigital('file', 'El archivo está vacío. Selecciona un PDF con contenido.');
