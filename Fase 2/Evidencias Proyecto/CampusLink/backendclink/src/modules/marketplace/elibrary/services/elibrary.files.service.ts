@@ -101,7 +101,7 @@ export function assertStoredDigitalFile(resource: DigitalResourceRow, file: Digi
 }
 /**
  * Solo propietario o receptor con adquisición completada puede descargar.
- * @returns Bytes y nombre del original tras comprobar derechos antes y después
+ * Devuelve: Bytes y nombre del original tras comprobar derechos antes y después
  *  de Storage; nunca entrega un original basándose solo en su URL o ID.
  */
 export async function getDigitalOriginal(auth: VerifiedAuthConnection, publicationId: unknown, attachmentId: unknown) {

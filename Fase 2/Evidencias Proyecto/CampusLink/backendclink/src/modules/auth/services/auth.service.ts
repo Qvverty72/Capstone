@@ -204,7 +204,7 @@ function registrationDetails(identity: VerifiedIdentity) {
 /**
  * La metadata de Auth aporta nombre/campus solicitados, pero no concede roles.
  * Se valida su formato y se contrasta con dominio y catálogo activos en cada intento.
- * @returns Estado complete con los identificadores del perfil; permite reintento seguro.
+ * Devuelve: Estado complete con los identificadores del perfil; permite reintento seguro.
  */
 export async function completeInstitutionalRegistration(identity: VerifiedIdentity) {
   try {

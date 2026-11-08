@@ -32,10 +32,10 @@ export class MemoryRateLimitStore implements RateLimitStore {
 
 /**
  * Oculta el identificador del sujeto con SHA-256 antes de delegar el incremento.
- * @param store Contador temporal local o distribuido.
- * @param subject Identidad ya determinada por el middleware (IP o usuario).
- * @param category Grupo de cuota; max y windowSeconds definen su límite y ventana.
- * @returns Promesa sin valor si se admite; lanza 429 al exceder o 503 si no puede medir.
+ * Parámetro: store Contador temporal local o distribuido.
+ * Parámetro: subject Identidad ya determinada por el middleware (IP o usuario).
+ * Parámetro: category Grupo de cuota; max y windowSeconds definen su límite y ventana.
+ * Devuelve: Promesa sin valor si se admite; lanza 429 al exceder o 503 si no puede medir.
  */
 export async function consumeRateLimit(store: RateLimitStore, subject: string, category: string, max: number, windowSeconds: number) {
   // Nunca almacenar tokens, UUID o direcciones de origen en claro en el contador compartido.

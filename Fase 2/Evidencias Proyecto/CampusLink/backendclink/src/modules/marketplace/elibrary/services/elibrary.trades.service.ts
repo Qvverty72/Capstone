@@ -31,7 +31,7 @@ const conflict = (message: string) => new ApiError(409,'CONFLICT',message);
 /**
  * Ordena locks de perfiles y luego publicación para coordinar operaciones concurrentes.
  * Los IDs de solicitud/acuerdo restringen qué participante puede resolver o consultar.
- * @returns Resultado del callback dentro de la transacción SQL autorizada.
+ * Devuelve: Resultado del callback dentro de la transacción SQL autorizada.
  */
 export async function withDigitalTradeContext<T>(auth: VerifiedAuthConnection, rawId: unknown,
   operation: (client: PoolClient, resource: DigitalResourceRow, current: VerifiedAuthConnection) => Promise<T>,

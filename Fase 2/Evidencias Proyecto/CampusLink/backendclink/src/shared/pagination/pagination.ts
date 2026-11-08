@@ -86,7 +86,7 @@ export function parsePaginationQuery(
 /** Recorta el resultado consultado con un elemento adicional y construye los metadatos de paginación. */
 /**
  * El repositorio debe consultar limit + 1; la fila extra solo prueba hasMore.
- * @returns Copia limitada de los datos y metadatos de página, sin inventar un total.
+ * Devuelve: Copia limitada de los datos y metadatos de página, sin inventar un total.
  * Si se necesita total, el caso de uso debe obtenerlo mediante otra consulta.
  */
 export function createPaginatedResult<T>(

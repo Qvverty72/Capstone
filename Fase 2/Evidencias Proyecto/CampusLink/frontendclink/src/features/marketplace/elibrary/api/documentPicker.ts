@@ -28,7 +28,7 @@ export function digitalFilesFromWeb(selected: File[]): DigitalFile[] {
 
 /**
  * Pide varios PDF y copia a caché nativa para poder leerlos durante la subida.
- * @returns Archivos locales o [] al cancelar; rechaza vacíos, formatos o tamaños no admitidos.
+ * Devuelve: Archivos locales o [] al cancelar; rechaza vacíos, formatos o tamaños no admitidos.
  */
 export async function pickDigitalFiles(): Promise<DigitalFile[]> {
   const result = await getDocumentAsync({ type: 'application/pdf', multiple: true, copyToCacheDirectory: true, base64: false });

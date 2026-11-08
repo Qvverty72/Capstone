@@ -22,7 +22,7 @@ const customPhrases = new Set(CHILEAN_PHRASES.map(entry => entry.phrase));
 /**
  * Une palabras y frases sin duplicar palabras internas de una frase detectada.
  * También revisa letras separadas por espacios para cubrir esa forma de evasión.
- * @returns Detecciones ordenadas; es un filtro de reglas, no una garantía semántica universal.
+ * Devuelve: Detecciones ordenadas; es un filtro de reglas, no una garantía semántica universal.
  */
 function detectContent(text: string): DetectionResult[] {
   const phrases = phraseModerator.detect(text).filter(match => match.matchType === 'phrase' && customPhrases.has(match.matched));

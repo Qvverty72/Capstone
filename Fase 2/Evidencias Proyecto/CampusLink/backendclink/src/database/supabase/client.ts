@@ -34,7 +34,7 @@ export const supabaseAuth = createClient(env.supabaseUrl, env.supabasePublishabl
 /**
  * Entrega una instancia pública nueva para operaciones que pueden crear sesión.
  * El aislamiento evita mezclar el estado de un registro con otra petición HTTP.
- * @returns Cliente con clave pública y sin persistencia de sesión.
+ * Devuelve: Cliente con clave pública y sin persistencia de sesión.
  */
 export function createPublicSupabaseClient() {
   return createClient(env.supabaseUrl, env.supabasePublishableKey, options);

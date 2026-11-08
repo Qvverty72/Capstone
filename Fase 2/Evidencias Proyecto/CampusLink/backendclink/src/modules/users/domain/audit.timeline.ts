@@ -20,9 +20,9 @@ type ReadPage = (limit: number, offset: number) => Promise<AuditEntry[]>;
  * Fusiona por comparación las cabeceras SQL/Mongo y descarta el offset solicitado.
  * Lee lotes de 100 y conserva limit + 1 para calcular si existe página siguiente.
  * La memoria queda acotada, aunque una página lejana aún requiere recorrer registros.
- * @param readSql Lector paginado ordenado de eventos relacionales.
- * @param readMongo Lector paginado ordenado de eventos documentales.
- * @returns Página combinada con metadatos; no crea una instantánea común entre motores.
+ * Parámetro: readSql Lector paginado ordenado de eventos relacionales.
+ * Parámetro: readMongo Lector paginado ordenado de eventos documentales.
+ * Devuelve: Página combinada con metadatos; no crea una instantánea común entre motores.
  */
 export async function auditTimeline(pagination: PaginationParams, readSql: ReadPage, readMongo: ReadPage) {
   const batch = 100;

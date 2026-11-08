@@ -18,7 +18,7 @@ export function useLogin() {
 
 /**
  * Normaliza correo, comprueba campos y evita reenvíos mientras está ocupado.
- * @returns Promesa sin datos; expone cualquier fallo como estado error para la pantalla.
+ * Devuelve: Promesa sin datos; expone cualquier fallo como estado error para la pantalla.
  */
   async function submit() {
     if (busy || auth.status === 'loading') return;

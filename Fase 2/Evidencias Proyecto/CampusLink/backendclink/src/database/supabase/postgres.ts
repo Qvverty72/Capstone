@@ -35,8 +35,8 @@ export async function probePostgres(): Promise<void> {
 /**
  * El callback recibe el mismo PoolClient durante toda la operación: los repositorios
  * que colaboren deben conservarlo para compartir locks y atomicidad SQL.
- * @param operation Caso de uso ejecutado entre BEGIN y COMMIT.
- * @returns Resultado del callback; cualquier excepción provoca ROLLBACK y se propaga.
+ * Parámetro: operation Caso de uso ejecutado entre BEGIN y COMMIT.
+ * Devuelve: Resultado del callback; cualquier excepción provoca ROLLBACK y se propaga.
  * No incluye MongoDB ni Storage en la transacción.
  */
 export async function withPostgresTransaction<T>(operation: (client: PoolClient) => Promise<T>): Promise<T> {

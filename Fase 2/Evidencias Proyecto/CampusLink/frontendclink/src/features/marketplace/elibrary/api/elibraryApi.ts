@@ -62,7 +62,7 @@ export function attachDigitalFile(publicationId: string, file: DigitalFile, sign
 }
 /**
  * Recibe el archivo autorizado por API y contrasta su tamaño con los metadatos.
- * @returns Blob completo para guardado local; esa igualdad no es una firma criptográfica.
+ * Devuelve: Blob completo para guardado local; esa igualdad no es una firma criptográfica.
  */
 export async function downloadDigitalFile(publicationId: string, file: DigitalAttachment, signal?: AbortSignal) {
   const response = await authenticatedResponseRequest(`${base}/${publicationId}/files/${file.id}/download`, { signal });

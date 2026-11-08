@@ -20,7 +20,7 @@ let connecting: Promise<unknown> | undefined;
 /**
  * Reutiliza el cliente y la promesa de conexión para no abrir intentos simultáneos.
  * Sin URL no conecta; la política superior decide si puede usar memoria.
- * @returns Promesa resuelta al estar listo; rechaza si Redis no queda disponible.
+ * Devuelve: Promesa resuelta al estar listo; rechaza si Redis no queda disponible.
  */
 export async function connectRateLimitRedis() {
   if (!env.rateLimitRedisUrl) return;

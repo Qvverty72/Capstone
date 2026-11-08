@@ -14,7 +14,7 @@ import { extractDigitalPreview } from '../files/elibrary.preview.extractor.js';
 
 /**
  * Recibe IDs de publicación/archivo dentro de la institución del usuario.
- * @returns Fragmento de la página 1 o metadatos de indisponibilidad; un cambio de
+ * Devuelve: Fragmento de la página 1 o metadatos de indisponibilidad; un cambio de
  * referencia durante la extracción produce 409 y los fallos externos se reducen a 503.
  */
 export async function getDigitalPreview(auth: VerifiedAuthConnection, rawId: unknown, rawFileId: unknown) {

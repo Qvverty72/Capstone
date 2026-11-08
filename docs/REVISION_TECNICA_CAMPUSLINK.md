@@ -48,7 +48,7 @@ en desarrollo frente a una sonda obligatoria de arranque.
 ## B. Historial de commits
 
 <!-- HISTORIAL_INICIO -->
-**Total al cierre: 67 commits nuevos**, contados desde la base; los 66 primeros
+**Total actualizado: 68 commits nuevos**, contados desde la base; los 67 primeros
 figuran con hash real y el último es este registro de cierre. Todos corresponden
 a cambios no vacíos. Los mensajes de la tabla resumen el cambio de cada bloque.
 
@@ -120,15 +120,16 @@ a cambios no vacíos. Los mensajes de la tabla resumen el cambio de cada bloque.
 | 64 | `f9c5bd5` | docs(files): precisa inspección PDF y límites de la extracción aislada | 2 archivos |
 | 65 | `9a1a17b` | docs(infra): explica entorno Docker y límites de verificación | 1 archivo |
 | 66 | `43c8dd5` | docs(review): incorpora evaluación técnica arquitectura y guía de estudio | 1 archivo |
-| 67 | Este commit (autorreferencia) | `docs(history): registra los 67 commits y el cierre de la revisión` | Historial completo y comprobaciones finales del informe. |
+| 67 | `31c3026` | docs(history): registra los 67 commits y el cierre de la revisión | Historial completo y comprobaciones finales de la revisión inicial. |
+| 68 | Este commit (autorreferencia) | `docs(comments): convierte etiquetas JSDoc en texto explicativo` | Convierte 51 etiquetas en 35 fuentes y actualiza este registro. |
 
 El hash de un commit depende de su contenido: incluir aquí su propio hash completo
 produciría una referencia circular. El último se identifica por su mensaje exacto;
-los hashes de los 66 anteriores sí están fijados. Para obtener el identificador del
+los hashes de los 67 anteriores sí están fijados. Para obtener el identificador del
 cierre sin depender de que HEAD conserve esa posición:
 
 ```powershell
-git log JP_comments --format="%h %s" --fixed-strings --grep="docs(history): registra los 67 commits y el cierre de la revisión"
+git log JP_comments --format="%h %s" --fixed-strings --grep="docs(comments): convierte etiquetas JSDoc en texto explicativo"
 ```
 
 Para estudiar un bloque, usar `git show <hash>`; los commits agrupan cambios reales
@@ -747,9 +748,17 @@ los demás archivos agregados pertenecen a `docs/`. El contador se refiere a los
 commits nuevos desde la base, no al historial anterior importado con subtree.
 
 
-Cierre comprobado: 67 commits locales nuevos; 125 fuentes con código/tipos intactos;
+Cierre inicial (`31c3026`): 67 commits locales nuevos; 125 fuentes con código/tipos intactos;
 solo TS/TSX comentados y tres Markdown en el diff. Los dos typechecks, build
 backend, suites backend/frontend y arquitectura finalizaron con código 0.
 La revisión de líneas agregadas no encontró patrones de claves privadas,
 tokens de proveedor o JWT; no se incluyeron archivos sensibles. Las puntas de
 las otras ramas locales se conservaron y el árbol queda limpio tras este commit.
+
+Ajuste posterior solicitado: se reemplazaron 51 etiquetas de parámetros y retornos
+por texto normal con «Parámetro:» y «Devuelve:» en 35 fuentes. Las etiquetas eran
+válidas dentro de comentarios; el cambio responde a la preferencia de lectura.
+Se conservaron código, tipos y finales de línea, y se comprobó que los tokens
+sintácticos y la emisión sin comentarios son idénticos. No se repitieron las suites
+completas para este ajuste exclusivamente textual. El historial actualizado suma
+68 commits locales, sin push ni merge.

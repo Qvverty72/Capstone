@@ -11,7 +11,7 @@ import type { AuthLocals, IdentityLocals } from '../types/auth.types.js';
 /**
  * Acepta una única cabecera Authorization con sintaxis Bearer.
  * Extraer su contenido no valida el token: esa verificación se realiza en el servicio.
- * @returns Token para consultar Auth; lanza 401 si falta o la cabecera es ambigua.
+ * Devuelve: Token para consultar Auth; lanza 401 si falta o la cabecera es ambigua.
  */
 function readAccessToken(request: Request): string {
   const header = request.headers.authorization;

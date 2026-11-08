@@ -29,7 +29,7 @@ export async function findAcademicOptions(institutionId: string) {
 
 /**
  * Construye operaciones que comparten BEGIN/COMMIT y el orden de locks.
- * @returns Resultado del caso de uso; cualquier error revierte todas las escrituras,
+ * Devuelve: Resultado del caso de uso; cualquier error revierte todas las escrituras,
  * incluida la actualización de nombre/campus y la lista de carreras.
  */
 export function withAcademicProfileTransaction<T>(operation: (repository: AcademicProfileTransaction) => Promise<T>): Promise<T> {

@@ -148,7 +148,7 @@ function inspectDigitalPdf(pdf: PDFDocument): void {
 /**
  * Comprueba Buffer, 25 MiB, nombre/MIME, cabecera/cierre, cifrado y estructura.
  * Inspecciona acciones/adjuntos/enlaces sin visitar sus destinos ni alterar bytes.
- * @returns Archivo normalizado conservando el Buffer; lanza 400/413 si se rechaza.
+ * Devuelve: Archivo normalizado conservando el Buffer; lanza 400/413 si se rechaza.
  * Esta política no equivale a un antivirus ni a una prueba absoluta de inocuidad.
  */
 export async function validateDigitalFile(file: DigitalUpload | undefined): Promise<DigitalUpload> {

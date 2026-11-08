@@ -14,7 +14,7 @@ import { rankDigitalRecommendations } from '../repositories/elibrary.recommendat
 export const DIGITAL_RECOMMENDATION_WEIGHTS=Object.freeze({career:30,subject:20,view:5,request:10,activity:1});
 /**
  * Autoriza el contexto institucional, pide IDs puntuados y recupera sus DTO visibles.
- * @returns Página ordenada con score y motivos explicativos; si ya no hay candidatos,
+ * Devuelve: Página ordenada con score y motivos explicativos; si ya no hay candidatos,
  * devuelve una página vacía. Los pesos declarados son parte de esta política.
  */
 export async function getDigitalRecommendations(auth:VerifiedAuthConnection,raw:unknown) {

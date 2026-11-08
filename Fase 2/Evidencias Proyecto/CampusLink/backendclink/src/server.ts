@@ -10,7 +10,7 @@ import 'dotenv/config';
  * Inicia la API y registra un cierre idempotente para SIGINT/SIGTERM.
  * El límite global de 29 segundos evita dejar el proceso esperando clientes
  * o tareas pendientes indefinidamente; un fallo de arranque termina con código 1.
- * @returns Promesa resuelta tras instalar el servidor, workers y señales.
+ * Devuelve: Promesa resuelta tras instalar el servidor, workers y señales.
  */
 async function main(): Promise<void> {
   const { startApi, stopApi } = await import('./bootstrap.js');

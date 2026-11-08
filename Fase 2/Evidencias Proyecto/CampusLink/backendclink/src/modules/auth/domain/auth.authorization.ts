@@ -57,9 +57,9 @@ export function requireCampusCapability(context: VerifiedAuthConnection, campusI
 
 /**
  * Verifica cuenta activa y coincidencia exacta con el propietario persistido.
- * @param context Contexto de identidad y perfil validado por el servidor.
- * @param ownerId Dueño obtenido del recurso, no del usuario que solicita la operación.
- * @returns Sin valor si se permite; lanza 403 ante una cuenta o propietario inválidos.
+ * Parámetro: context Contexto de identidad y perfil validado por el servidor.
+ * Parámetro: ownerId Dueño obtenido del recurso, no del usuario que solicita la operación.
+ * Devuelve: Sin valor si se permite; lanza 403 ante una cuenta o propietario inválidos.
  */
 export function requireResourceOwner(context: VerifiedAuthConnection, ownerId: string) {
   requireActiveAccount(context.profile, context.userId);

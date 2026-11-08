@@ -15,9 +15,9 @@ import type { ActivityDependencies } from '../../activities/public.js';
 /**
  * Revalida la cuenta dentro de SQL antes de seleccionar una operación.
  * Los flags del input determinan si cuenta, lista, consulta referencia o actualiza.
- * @param auth Contexto autenticado del propietario de la bandeja.
- * @param transaction Frontera sustituible por pruebas; por defecto usa pg.
- * @returns DTO de la operación; 404 oculta notificaciones fuera del alcance propio.
+ * Parámetro: auth Contexto autenticado del propietario de la bandeja.
+ * Parámetro: transaction Frontera sustituible por pruebas; por defecto usa pg.
+ * Devuelve: DTO de la operación; 404 oculta notificaciones fuera del alcance propio.
  */
 export async function ownNotificationOperation(auth: VerifiedAuthConnection,
   input: { cursor?: string; id?: string; remove?: boolean; countOnly?: boolean; activityChange?: boolean },

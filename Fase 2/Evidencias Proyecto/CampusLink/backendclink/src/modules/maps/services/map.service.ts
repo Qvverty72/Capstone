@@ -32,7 +32,7 @@ export async function getActiveMap(campusId: string) {
 /**
  * Comprueba campus del perfil y capacidad general antes de ejecutar lookup.
  * Valida también campus/status del resultado para no confiar solo en el parámetro.
- * @returns Mapa ACTIVE autorizado; lanza 403 por alcance o 404 si no está publicado.
+ * Devuelve: Mapa ACTIVE autorizado; lanza 403 por alcance o 404 si no está publicado.
  */
 export async function getAuthorizedActiveMap(auth: VerifiedAuthConnection, campusId: string, lookup: ActiveMapLookup = getActiveMap) {
   // La consulta sigue el campus actual del perfil, incluso si el usuario se cambió de campus.

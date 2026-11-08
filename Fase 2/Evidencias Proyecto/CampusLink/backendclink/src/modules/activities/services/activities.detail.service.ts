@@ -66,7 +66,7 @@ export async function getActivityDetail(auth: VerifiedAuthConnection, activityId
 /**
  * La inscripción no devuelve un estado optimista: tras persistir vuelve a consultar.
  * El operationId opcional identifica el intento para que el repositorio deduplique.
- * @returns Ficha con la participación confirmada por los lectores del servidor.
+ * Devuelve: Ficha con la participación confirmada por los lectores del servidor.
  */
 export async function joinActivity(auth: VerifiedAuthConnection, activityId: string,
   dependencies: ActivityDependencies = {}, operationId?: string): Promise<ActivityDetailDto> {

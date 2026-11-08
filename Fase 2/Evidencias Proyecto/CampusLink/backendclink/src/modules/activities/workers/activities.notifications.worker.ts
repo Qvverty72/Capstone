@@ -61,7 +61,7 @@ export async function maintainActivities(dependencies = maintenanceDefaults, sto
 /** Los eventos persistidos sobreviven reinicios; fallos SQL no invalidan una actividad ya publicada. */
 /**
  * Ejecuta una tanda inicial y programa la siguiente al terminar, sin solaparse.
- * @returns Función async de cierre: cancela el próximo timer y espera la tanda actual.
+ * Devuelve: Función async de cierre: cancela el próximo timer y espera la tanda actual.
  * El intervalo de 60 segundos es por proceso; no constituye una cola externa.
  */
 export function startActivityNotificationWorker(): () => Promise<void> {

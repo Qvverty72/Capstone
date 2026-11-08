@@ -8,7 +8,7 @@ import { Platform, type DimensionValue } from 'react-native';
 /** Conserva el espaciado nativo; Router 58 requiere CSS env para los insets web. */
 /**
  * Recibe borde, inset nativo y ajustes de separación.
- * @returns Número en nativo o expresión CSS compatible con DimensionValue en web.
+ * Devuelve: Número en nativo o expresión CSS compatible con DimensionValue en web.
  * El resultado es estilo de layout, no una medición numérica uniforme entre plataformas.
  */
 export function safeAreaInset(

@@ -57,9 +57,9 @@ export async function startApi(dependencies: BootstrapDependencies = defaults): 
 /**
  * Deja de aceptar conexiones y drena los workers en paralelo antes de cerrar pools.
  * El bloque finally libera las dependencias incluso si falla el drenaje.
- * @param server Servidor previamente abierto por startApi.
- * @param drainWorkers Callback que espera la finalización de las tareas periódicas.
- * @returns Promesa que termina al liberar los recursos; propaga fallos de cierre.
+ * Parámetro: server Servidor previamente abierto por startApi.
+ * Parámetro: drainWorkers Callback que espera la finalización de las tareas periódicas.
+ * Devuelve: Promesa que termina al liberar los recursos; propaga fallos de cierre.
  */
 export async function stopApi(server: Server, drainWorkers: () => Promise<unknown> = async () => {}): Promise<void> {
   try {

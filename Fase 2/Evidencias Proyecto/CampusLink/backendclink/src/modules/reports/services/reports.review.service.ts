@@ -23,8 +23,8 @@ const missing = () => new ApiError(404, 'NOT_FOUND', 'La denuncia o el archivo n
 /** Reutiliza el bloqueo de cuenta y roles: una sesión previa no sobrevive a una revocación. */
 /**
  * Frontera común de revisión: bloquea contexto, exige administración y campus activo.
- * @param operation Lectura o mutación que recibe el cliente SQL y la institución autorizada.
- * @returns Resultado del caso de uso, preservando ApiError y acotando fallos externos a 503.
+ * Parámetro: operation Lectura o mutación que recibe el cliente SQL y la institución autorizada.
+ * Devuelve: Resultado del caso de uso, preservando ApiError y acotando fallos externos a 503.
  */
 export async function authorizedReview<T>(auth: VerifiedAuthConnection, campusId: string,
   operation: (client: PoolClient, institutionId: string) => Promise<T>, transaction = withPostgresTransaction): Promise<T> {

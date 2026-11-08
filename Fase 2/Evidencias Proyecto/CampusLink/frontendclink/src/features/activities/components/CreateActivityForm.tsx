@@ -72,7 +72,7 @@ export function CreateActivityForm({ locations, initialLocation, onCreated, offi
 /**
  * Valida el borrador antes de pedir preview o publicar. En series exige el hash
  * de la expansión vigente; cualquier cambio del borrador invalida la vista previa.
- * @returns Promesa que notifica onCreated solo tras la confirmación del servidor.
+ * Devuelve: Promesa que notifica onCreated solo tras la confirmación del servidor.
  */
   const publish = async (previewOnly = false) => {
     if (request.current || !identity) return;

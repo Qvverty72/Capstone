@@ -18,7 +18,7 @@ export interface DownloadFile {
 /** Guarda bytes ya autorizados. El archivo temporal nativo se retira al cerrar compartir. */
 /**
  * Recibe bytes ya autorizados y metadatos de presentación/extensión/MIME.
- * @returns Promesa de finalización del flujo local; compartir no permite comprobar
+ * Devuelve: Promesa de finalización del flujo local; compartir no permite comprobar
  * si la persona guardó finalmente el archivo en otra aplicación.
  */
 export async function saveFile(blob: Blob, file: DownloadFile, signal?: AbortSignal) {
