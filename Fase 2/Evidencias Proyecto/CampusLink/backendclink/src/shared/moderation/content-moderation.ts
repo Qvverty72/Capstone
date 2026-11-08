@@ -1,3 +1,8 @@
+/**
+ * Política de texto público aplicada por servicios antes de guardar contenido.
+ * Combina Verlux español/inglés con vocabulario chileno y reglas de caracteres;
+ * rechaza detecciones sin depender de que la interfaz ejecute la misma validación.
+ */
 import { createInstance, type Category, type DetectionResult, type Severity } from 'verlux';
 import { ApiError } from '../errors/api-error.js';
 import type { ApiErrorDetail } from '../http/api.types.js';
@@ -14,6 +19,11 @@ const phraseModerator = createInstance({ languages: ['es'], minSeverity: 'low', 
 phraseModerator.addPhrases(CHILEAN_PHRASES);
 const customPhrases = new Set(CHILEAN_PHRASES.map(entry => entry.phrase));
 
+/**
+ * Une palabras y frases sin duplicar palabras internas de una frase detectada.
+ * También revisa letras separadas por espacios para cubrir esa forma de evasión.
+ * @returns Detecciones ordenadas; es un filtro de reglas, no una garantía semántica universal.
+ */
 function detectContent(text: string): DetectionResult[] {
   const phrases = phraseModerator.detect(text).filter(match => match.matchType === 'phrase' && customPhrases.has(match.matched));
   const words = moderator.detect(text).filter(match => !phrases.some(phrase =>
@@ -37,6 +47,10 @@ function detectContent(text: string): DetectionResult[] {
   return [...words, ...phrases, ...separated].sort((a, b) => a.position[0] - b.position[0]);
 }
 
+/**
+ * Normaliza Unicode NFC y restringe el alfabeto permitido.
+ * Solo description admite saltos de línea; detectar formato y vocabulario son controles distintos.
+ */
 function formatError(field: string, text: string): string | null {
   const multiline = field === 'description';
   const allowed = multiline ? /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 \r\n]*$/u : /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 ]*$/u;
