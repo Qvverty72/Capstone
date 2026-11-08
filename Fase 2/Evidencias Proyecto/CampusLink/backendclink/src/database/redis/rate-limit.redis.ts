@@ -1,3 +1,8 @@
+/**
+ * Implementación distribuida del contrato RateLimitStore mediante Redis.
+ * Conserva solo contadores temporales: no guarda usuarios ni recursos del dominio.
+ * El script Lua une incremento y expiración para evitar carreras entre instancias.
+ */
 import { createClient } from 'redis';
 import { env } from '../../config/env.js';
 import type { RateLimitStore } from '../../shared/rate-limit/rate-limit.js';
@@ -12,6 +17,11 @@ return {count, redis.call('PTTL', KEYS[1])}
 
 let client: ReturnType<typeof createClient> | undefined;
 let connecting: Promise<unknown> | undefined;
+/**
+ * Reutiliza el cliente y la promesa de conexión para no abrir intentos simultáneos.
+ * Sin URL no conecta; la política superior decide si puede usar memoria.
+ * @returns Promesa resuelta al estar listo; rechaza si Redis no queda disponible.
+ */
 export async function connectRateLimitRedis() {
   if (!env.rateLimitRedisUrl) return;
   if (!client) {
@@ -34,6 +44,10 @@ export async function probeRateLimitRedis(): Promise<void> {
 }
 
 export const redisRateLimitStore: RateLimitStore = {
+/**
+ * Consume una cuota y convierte el TTL de milisegundos a Retry-After en segundos.
+ * Una respuesta Redis inesperada se rechaza en lugar de aceptar una cuota incierta.
+ */
   async consume(key, windowSeconds) {
     await connectRateLimitRedis();
     if (!client?.isReady) throw new Error('Shared rate limit unavailable');
@@ -44,6 +58,10 @@ export const redisRateLimitStore: RateLimitStore = {
   },
 };
 
+/**
+ * Destruye la conexión y borra su estado para permitir una inicialización posterior.
+ * No borra claves ni modifica datos persistentes de los otros servicios.
+ */
 export async function closeRateLimitRedis() {
   if (client?.isOpen) client.destroy();
   client = undefined;
