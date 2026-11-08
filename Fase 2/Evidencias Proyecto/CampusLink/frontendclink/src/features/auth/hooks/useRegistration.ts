@@ -1,3 +1,8 @@
+/**
+ * Orquestación del alta institucional: catálogo, aceptación del aviso, OTP y perfil.
+ * Los estados pendingEmail/confirmingProfile separan envío, confirmación y provisión;
+ * los permisos se obtienen después desde /me, nunca del formulario.
+ */
 import { useEffect, useState } from 'react';
 import { Keyboard } from 'react-native';
 import { useAuth } from './useAuth';
@@ -91,6 +96,10 @@ export function useRegistration() {
     finally { setBusy(false); }
   }
 
+/**
+ * Reintenta solo la provisión del perfil con la sesión ya confirmada.
+ * No crea otra cuenta ni consume otro OTP; al terminar pide refrescar la identidad.
+ */
   async function retryCompletion() {
     if (busy) return;
     setBusy(true); setError(null);

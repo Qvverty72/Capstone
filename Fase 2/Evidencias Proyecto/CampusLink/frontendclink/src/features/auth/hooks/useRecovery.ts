@@ -1,3 +1,8 @@
+/**
+ * Formulario de recuperación en dos pasos con pausa de reenvío compartida.
+ * Mantiene OTP y nueva contraseña solo en estado local; resetPassword llama a la API
+ * sin convertir la sesión temporal de recuperación en la sesión normal del usuario.
+ */
 import { useState } from 'react';
 import { Keyboard } from 'react-native';
 import { requestRecovery, resetPassword } from '../api/sessionApi';
@@ -29,6 +34,10 @@ export function useRecovery() {
     finally { setBusy(false); }
   }
 
+/**
+ * Comprueba código y coincidencia de contraseñas para dar respuesta inmediata.
+ * La validez real del OTP y la política de contraseña se verifican en el servidor.
+ */
   async function confirm() {
     if (busy || !pendingEmail) return;
     setError(null);
