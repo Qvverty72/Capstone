@@ -1,3 +1,8 @@
+/**
+ * Vista previa textual limitada, independiente de la descarga del original.
+ * Lee el archivo autorizado, delega extracción aislada y vuelve a validar su versión.
+ * Un PDF sin texto seguro devuelve available:false sin inventar una muestra.
+ */
 import { withPostgresTransaction } from '../../../../database/supabase/postgres.js';
 import { ApiError } from '../../../../shared/errors/api-error.js';
 import type { VerifiedAuthConnection } from '../../../auth/types/auth.types.js';
@@ -7,6 +12,11 @@ import { assertStoredDigitalFile } from './elibrary.files.service.js';
 import { digitalId } from '../validators/elibrary.validation.js';
 import { extractDigitalPreview } from '../files/elibrary.preview.extractor.js';
 
+/**
+ * Recibe IDs de publicación/archivo dentro de la institución del usuario.
+ * @returns Fragmento de la página 1 o metadatos de indisponibilidad; un cambio de
+ * referencia durante la extracción produce 409 y los fallos externos se reducen a 503.
+ */
 export async function getDigitalPreview(auth: VerifiedAuthConnection, rawId: unknown, rawFileId: unknown) {
   authorizeDigitalAccess(auth); const id = digitalId(rawId), fileId = digitalId(rawFileId,'fileId');
   const check = () => withPostgresTransaction(async client => {
