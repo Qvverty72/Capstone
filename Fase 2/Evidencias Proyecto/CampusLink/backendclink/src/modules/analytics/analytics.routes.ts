@@ -1,3 +1,8 @@
+/**
+ * Rutas de consulta del tablero, generación/historial/exportación de reportes y vistas.
+ * GET no genera snapshots; POST /reports sí persiste uno. Las capacidades de reportería
+ * se revisan en el servicio y las descargas tienen respuesta binaria propia.
+ */
 import { createPolicyRouter, publicEndpoint } from '../../shared/http/endpoint-policy.js';
 import type { Router } from 'express';
 import { exportAnalyticalReportController, generateAnalyticalReportController, getAnalyticalReportController, getAnalyticsHealthController, getDashboardController, getDashboardOptionsController, listHistoricalReportsController, recordResourceViewController } from './controllers/analytics.controller.js';

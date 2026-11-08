@@ -1,3 +1,8 @@
+/**
+ * Editor individual de actividad/ocurrencia con revisión esperada y previewHash.
+ * Obtiene la vista previa y confirma en dos peticiones; un 409 obliga a revisar
+ * la ficha actual, sin sobrescribir automáticamente la versión de otra operación.
+ */
 import { APP_COLORS } from '@/types/colors';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -9,6 +14,7 @@ import { isActivityDescriptionAllowed, type ActivityDraft, type ActivityLocation
 import { activityEditDraft, validateActivityEditDraft } from '../types/editing';
 import { ActivityFields } from './ActivityFields';
 import { ActivityBackButton } from './ActivityBackButton';
+import { activityFormErrorMessage } from '../api/activityFormErrors';
 
 /** Edita una sola ocurrencia mediante previewHash y revisión para detectar escrituras concurrentes. */
 export function EditActivityForm({ activity, locations, onCancel, onSaved }: {
@@ -27,11 +33,17 @@ export function EditActivityForm({ activity, locations, onCancel, onSaved }: {
   const submit = async () => {
     if (request.current || !identity) return;
     if (!isActivityDescriptionAllowed(draft.description, allowCustomDescription, activity.description)) {
-      setError('Selecciona una descripción para la actividad.'); return;
+      setError(isActivityDescriptionAllowed(activity.description, false)
+        ? 'La descripción no corresponde a una opción disponible. Selecciona una descripción de la lista para continuar.'
+        : 'La descripción no corresponde a una opción disponible. Elige una descripción de la lista o selecciona «Conservar descripción actual» para mantener el texto original.'); return;
     }
     const parsed = validateActivityEditDraft(draft, activity, locations);
     if (!parsed.input) { setError(parsed.error); return; }
     const abort = new AbortController(); request.current = abort; setBusy(true); setError(null);
+/**
+ * Distingue el fallo al revisar del fallo tras enviar la escritura.
+ * En el segundo caso la respuesta puede haberse perdido aunque el cambio se guardara.
+ */
     let saving = false;
     try {
       // Obtiene el token de concurrencia del servidor sin requerir otra acción del usuario.
@@ -42,11 +54,14 @@ export function EditActivityForm({ activity, locations, onCancel, onSaved }: {
       if (!abort.signal.aborted) onSaved(result.updatedCount);
     } catch (reason) {
       if (abort.signal.aborted) return;
-      setError(reason instanceof AuthApiError && reason.status === 409 ? 'La actividad cambió mientras la editabas. Vuelve a la ficha y abre la edición nuevamente.'
-        : reason instanceof AuthApiError && reason.status === 400 ? reason.serverMessage ?? 'Comprueba los campos e intenta guardar nuevamente.'
-        : reason instanceof AuthApiError && reason.status === 403 ? 'Solo el creador con acceso a este campus puede editar.'
-        : reason instanceof AuthApiError && reason.status === 404 ? 'La publicación ya no está disponible para editar.'
-        : saving ? 'No se pudo confirmar la edición. Actualiza la ficha antes de reintentar.' : 'No se pudieron guardar los cambios. Reintenta.');
+      setError(reason instanceof AuthApiError && reason.status === 409
+        ? activityFormErrorMessage(reason, 'La actividad cambió mientras la editabas. Vuelve a la ficha y abre la edición nuevamente para revisar su estado actual.')
+        : reason instanceof AuthApiError && reason.status === 400 ? activityFormErrorMessage(reason, 'No se pudieron validar los cambios. Revisa que el término sea posterior al inicio y que la ubicación siga disponible en el mapa.')
+        : reason instanceof AuthApiError && reason.status === 401 ? 'Tu sesión venció. Vuelve a iniciar sesión antes de guardar los cambios.'
+        : reason instanceof AuthApiError && reason.status === 403 ? 'Solo puedes editar actividades creadas por tu cuenta y en tu campus actual. Revisa la cuenta y el campus seleccionados.'
+        : reason instanceof AuthApiError && reason.status === 404 ? 'La publicación ya no está disponible para editar. Vuelve al listado y actualízalo para comprobar su estado.'
+        : reason instanceof AuthApiError && reason.status === 429 ? 'Has intentado guardar demasiadas veces en poco tiempo. Espera un momento antes de reintentar.'
+        : saving ? 'No se pudo confirmar la edición. Actualiza la ficha antes de reintentar para comprobar si se guardaron tus cambios.' : 'No se pudieron revisar los cambios. Comprueba tu conexión e intenta guardar nuevamente.');
       if (reason instanceof AuthApiError && [401, 403].includes(reason.status)) refreshIdentity();
     } finally { if (!abort.signal.aborted) setBusy(false); if (request.current === abort) request.current = null; }
   };

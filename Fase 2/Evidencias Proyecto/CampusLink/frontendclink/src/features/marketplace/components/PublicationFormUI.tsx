@@ -2,12 +2,15 @@ import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Gift, Tag, UploadCloud } from 'lucide-react-native';
 import { CATALOG_COLORS as c } from './CatalogUI';
+import { PUBLIC_CONTENT_HINT, publicationTextError } from '@/lib/validation/public-content';
 
-export function PublicationSection({ number, title, hint, children }: { number: string; title: string; hint?: string; children: ReactNode }) {
+export function PublicationSection({ number, title, hint, children, content }: { number: string; title: string; hint?: string; children: ReactNode; content?: { title: string; description: string } }) {
   return <View style={publicationUI.section}>
     <View style={publicationUI.sectionHeading}><View style={publicationUI.number}><Text style={publicationUI.numberText}>{number}</Text></View>
       <Text accessibilityRole="header" style={publicationUI.title}>{title}</Text></View>
     {hint && <Text style={publicationUI.hint}>{hint}</Text>}{children}
+    {content && <><Text style={publicationUI.hint}>{PUBLIC_CONTENT_HINT}</Text>
+      <PublicationFeedback error={publicationTextError(content.title, content.description)} /></>}
   </View>;
 }
 

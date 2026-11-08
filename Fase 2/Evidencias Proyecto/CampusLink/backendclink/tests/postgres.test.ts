@@ -4,6 +4,7 @@ import { Pool } from 'pg';
 
 let withTransaction: typeof import('../src/database/supabase/postgres.js').withPostgresTransaction;
 let closePostgres: () => Promise<void>;
+let probePostgres: () => Promise<void>;
 let loadEnv: typeof import('../src/config/env.js').loadEnv;
 let statements: string[], released: boolean[], rollbackFails: boolean, connectFails: boolean;
 before(async () => {
@@ -19,11 +20,15 @@ before(async () => {
     }, release: (destroy: boolean) => released.push(destroy) };
   });
   const driver = await import('../src/database/supabase/postgres.js');
-  withTransaction = driver.withPostgresTransaction; closePostgres = driver.closePostgres;
+  withTransaction = driver.withPostgresTransaction; closePostgres = driver.closePostgres; probePostgres = driver.probePostgres;
   ({ loadEnv } = await import('../src/config/env.js'));
 });
 beforeEach(() => { statements = []; released = []; rollbackFails = false; connectFails = false; });
 after(async () => { await closePostgres(); mock.restoreAll(); });
+
+test('readiness uses a real SELECT on the same PostgreSQL pool and releases its client', async () => {
+  await probePostgres(); assert.deepEqual(statements, ['SELECT 1']); assert.deepEqual(released, [false]);
+});
 
 test('transaction uses one leased client, commits and releases it', async () => {
   assert.equal(await withTransaction(async client => { await client.query('SELECT 1'); return 'saved'; }), 'saved');

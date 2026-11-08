@@ -6,6 +6,7 @@ import { formatNumber as number, groupingLabel, periodLabel, savedReportPeriodLa
 import { ANALYTICS_COPY as copy } from '../utils/copy';
 import { AnalyticsTrends, SubjectDemand } from './AnalyticsTrends';
 import { ReportExportActions } from './ReportExportActions';
+import { AnalyticsDeepDive } from './AnalyticsDeepDive';
 import { colors as c, styles as s } from './analytics.styles';
 
 export const KPI_KINDS = ['activeUsers', 'resourceDemand', 'subjectDemand', 'activityParticipation'] as const;
@@ -100,6 +101,7 @@ export function AnalyticsResults({ dashboard, report, showKpis = true, onEditFil
   return <View style={s.stack}>
     {report && <ReportSummary report={report} />}
     {showKpis && <AnalyticsKpis dashboard={dashboard} />}
+    <AnalyticsDeepDive key={`${dashboard.generatedAt}-analysis`} dashboard={dashboard} />
     <AnalyticsTrends key={`${dashboard.generatedAt}-${dashboard.grouping}`} dashboard={dashboard} onEditFilters={onEditFilters} />
     <SubjectDemand key={`${dashboard.generatedAt}-subjects`} metric={dashboard.subjectDemand} />
   </View>;

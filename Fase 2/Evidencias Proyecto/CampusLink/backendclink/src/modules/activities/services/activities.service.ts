@@ -1,3 +1,8 @@
+/**
+ * Consulta de actividades visibles sobre el mapa autorizado del campus actual.
+ * ActivityDependencies reúne lectores, reloj y operaciones sustituibles en pruebas;
+ * no representa un contenedor global ni abre conexiones al declarar sus tipos.
+ */
 import type { VerifiedAuthConnection } from '../../auth/types/auth.types.js';
 import { getAuthorizedActiveMap, type ActiveMapLookup } from '../../maps/public.js';
 import { ApiError } from '../../../shared/errors/api-error.js';
@@ -40,6 +45,10 @@ export async function getActivities(auth: VerifiedAuthConnection, query: Activit
   const now = dependencies.now?.() ?? new Date();
   const lookup = dependencies.findActivities ?? (await import('../repositories/activities.repository.js')).findVisibleActivities;
   const documents = await lookup(auth.campusId, query, now);
+/**
+ * Un documento espacial válido todavía necesita un creador vigente.
+ * La lectura agrupa sus IDs para contrastar referencias relacionales antes del DTO.
+ */
   const creators = await validActivityCreators(auth, documents.filter(document =>
     toVisibleActivity(document, auth.campusId, now, buildings, query)).map(document => document.createdByUserId), dependencies);
   const result = documents.flatMap((document): ActivityDto[] => {
@@ -47,5 +56,8 @@ export async function getActivities(auth: VerifiedAuthConnection, query: Activit
     const activity = toVisibleActivity(document, auth.campusId, now, buildings, query);
     return activity ? [activity] : [];
   });
+/**
+ * El orden por inicio e ID desempata resultados sin depender del orden del driver.
+ */
   return result.sort((a, b) => a.startAt.localeCompare(b.startAt) || a.id.localeCompare(b.id));
 }

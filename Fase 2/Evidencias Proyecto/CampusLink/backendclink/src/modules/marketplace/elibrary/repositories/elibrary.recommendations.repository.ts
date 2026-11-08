@@ -1,7 +1,17 @@
+/**
+ * Ranking SQL: excluye recursos propios, retirados, sin archivo o ya adquiridos.
+ * Limita coincidencias por carrera/asignatura a tres y actividad a cinco antes
+ * de ponderar; desempata por publicación reciente e ID y lee limit + 1.
+ */
 import type { PoolClient } from 'pg';
 import type { PaginationParams } from '../../../../shared/http/api.types.js';
 import { DIGITAL_ACCESS_PROOF } from './elibrary.repository.js';
 export interface DigitalRecommendationSignals {id:string;careerMatches:number;subjectMatches:number;ownView:boolean;ownRequest:boolean;activity:number;score:number}
+/**
+ * Recibe el PoolClient de la transacción, institución/usuario y pesos del servicio.
+ * Los filtros y pesos se parametrizan en SQL; los contadores son señales agregadas,
+ * no probabilidades ni garantías de relevancia para cada persona.
+ */
 export async function rankDigitalRecommendations(client:PoolClient,institutionId:string,userId:string,page:PaginationParams,weights:{career:number;subject:number;view:number;request:number;activity:number}) {
   return (await client.query<DigitalRecommendationSignals>(`WITH careers AS (
       SELECT c.id FROM public.usuario_carrera uc JOIN public.carrera c ON c.id=uc.carrera_id

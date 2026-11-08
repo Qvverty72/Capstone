@@ -1,3 +1,8 @@
+/**
+ * Primitivas visuales compartidas por catálogos físico y digital.
+ * Reciben valores/callbacks en props: cabecera, búsqueda, chips, panel y opciones.
+ * El estado local de búsqueda/expansión es visual; no ejecuta consultas del dominio.
+ */
 import { safeAreaInset } from '@/lib/layout/safeArea';
 import { Skeleton, SkeletonBlock } from '@/components/Skeleton';
 import type { ReactNode } from 'react';
@@ -14,6 +19,10 @@ export const CATALOG_COLORS = {
   primary: APP_COLORS.PRIMARY, secondary: APP_COLORS.SECONDARY,
 };
 
+/**
+ * Presenta título y acción con contador accesible. Limita la insignia visual a 99+,
+ * pero conserva el número real en la etiqueta que anuncia el lector de pantalla.
+ */
 export function ScreenHeader({ title, subtitle, action, onAction, onBack, actionBadgeCount }: {
   title: string; subtitle: string; action?: string; onAction?: () => void; onBack?: () => void; actionBadgeCount?:number;
 }) {
@@ -68,6 +77,10 @@ export function FilterChips({ modality, onModality, onMore, moreLabel = 'Filtros
   </View>;
 }
 
+/**
+ * Compone un Modal accesible con cierre, teclado y márgenes seguros por plataforma.
+ * El llamante aporta filtros y confirma su aplicación; el panel no decide la query HTTP.
+ */
 export function FilterSheet({ visible, title, onClose, onConfirm, children, confirmLabel = 'Ver resultados', confirmDisabled = false, fillHeight = false, compact = false, preferredHeight, subtitle, footer, sheetStyle }: { visible: boolean; title: string; onClose: () => void; onConfirm?: () => void; children: ReactNode; confirmLabel?: string | null; confirmDisabled?: boolean; fillHeight?: boolean; compact?: boolean; preferredHeight?: number; subtitle?: string; footer?: ReactNode; sheetStyle?: StyleProp<ViewStyle> }) {
   const insets = useSafeAreaInsets();
   return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>

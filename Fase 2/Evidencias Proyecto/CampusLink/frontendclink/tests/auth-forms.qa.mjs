@@ -77,7 +77,7 @@ const bundle = await build({
   define: { 'process.env.NODE_ENV': '"production"', __DEV__: 'false', global: 'globalThis' },
   plugins: [{ name: 'auth-fixtures', setup(builder) {
     builder.onResolve({ filter: /.*/ }, args => {
-      if (nativeInterop && args.path === 'react-native' && args.importer.endsWith('AuthUI.tsx')) {
+      if (nativeInterop && args.path === 'react-native' && ['AuthUI.tsx','RegistrationDisclaimer.tsx'].some(file => args.importer.endsWith(file))) {
         return { path: 'qa-native-controls', namespace: 'fixture' };
       }
       if (keyboardQA && args.path === 'react-native' && ['useAuthFormScroll.ts','useLogin.ts','useRegistration.ts','useRecovery.ts','safeArea.ts'].some(file=>args.importer.endsWith(file))) {
@@ -236,6 +236,12 @@ try {
   await page.getByRole('link', { name: 'Iniciar sesión', exact: true }).click(); await ready('Iniciar sesión');
 
   await page.getByRole('link', { name: 'Crear cuenta institucional' }).click(); await ready('Crea tu cuenta');
+  const policy = page.getByRole('checkbox', { name: 'He leído y acepto estas normas y mi responsabilidad por el contenido que publique.', exact: true });
+  assert.equal(await policy.getAttribute('aria-checked'), 'false', 'Acceptance must start unchecked');
+  await page.getByText('Tu contenido es tu responsabilidad', { exact: true }).waitFor();
+  await page.getByText('Respeta los derechos de autor', { exact: true }).waitFor();
+  await page.getByText('Responsabilidad de CampusLink', { exact: true }).waitFor();
+  await page.getByText('Incumplimiento y sanciones', { exact: true }).waitFor();
   await screenshot('register-empty-390');
   await field('Nombre completo').fill('Camila Soto');
   for (const email of ['@duocuc.cl', 'camila@example.com', 'camila@duocuc.cl.evil']) {
@@ -249,16 +255,36 @@ try {
   await field('Contraseña').press('Enter');
   await ready('Crea tu cuenta');
   assert.equal((await calls('register')).length, 0, 'Filling all fields, choosing campus and finishing keyboard editing must not submit');
+  assert.equal(await button('Crear cuenta').getAttribute('aria-disabled'), 'true', 'Complete fields do not replace policy acceptance');
+  await policy.click();
+  assert.equal(await policy.getAttribute('aria-checked'), 'true');
+  assert.notEqual(await button('Crear cuenta').getAttribute('aria-disabled'), 'true');
+  assert.equal((await calls('register')).length, 0, 'Accepting the policy does not submit the form');
+  await policy.click();
+  assert.equal(await button('Crear cuenta').getAttribute('aria-disabled'), 'true', 'Withdrawing acceptance blocks signup again');
+  if (keyboardQA) await policy.click();
+  else { await policy.focus(); await policy.press('Space'); }
+  assert.equal(await policy.getAttribute('aria-checked'), 'true', 'Acceptance is available through the appropriate platform controls');
   assert.equal(await button('Crear cuenta').evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(0, 46, 86)', 'Create account stays visible after selecting campus');
   await keyboardCycles(['Nombre completo','Correo institucional','Contraseña'],'keyboard-register-390');
   await screenshot('register-390'); await screenshot('register-320', 320);
+  for (const width of [320, 390, 1280]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await button('Crear cuenta').scrollIntoViewIfNeeded();
+    const box = await button('Crear cuenta').boundingBox();
+    assert.ok(box.y >= 0 && box.y + box.height <= 1000, 'The submit button stays reachable below the complete policy');
+    await screenshot(`register-policy-bottom-${width}`, width);
+  }
   const registerTransition = await beginKeyboardTransition();
   await button('Crear cuenta').click(); await ready('Verifica tu correo'); await cooldown();
   await finishKeyboardTransition(registerTransition);
   assert.equal((await calls('register'))[0].campusId, 'san-andres');
+  assert.equal((await calls('register'))[0].acceptedContentPolicy, true);
+  assert.equal((await calls('register'))[0].contentPolicyVersion, '2026-11-06');
   await screenshot('register-verify-390');
   await bottomScreenshot('register-verify-bottom-390');
   await button('Usar otro correo').click(); await ready('Crea tu cuenta');
+  assert.equal(await policy.getAttribute('aria-checked'), 'false', 'Changing the account resets acceptance');
   assert.equal(await field('Contraseña').inputValue(), '');
   await navigate('/login'); await navigate('/register'); await ready('Crea tu cuenta');
   await field('Nombre completo').fill('Camila Soto');
@@ -268,6 +294,8 @@ try {
   await page.getByRole('radio', { name: 'San Andrés', exact: true }).click();
   assert.equal(await button(/^Crear cuenta en \d+ s$/).getAttribute('aria-disabled'), 'true', 'Registration cooldown survives remount');
   await page.clock.fastForward(30_000);
+  assert.equal(await policy.getAttribute('aria-checked'), 'false', 'Acceptance is not restored from another registration');
+  await policy.click();
   await button('Crear cuenta').click(); await ready('Verifica tu correo'); await cooldown();
   await page.clock.fastForward(30_000);
   await page.evaluate(() => globalThis.__qa.failResend = true);
@@ -310,5 +338,5 @@ try {
     console.log('iOS configuration on RNWeb: 24 keyboard/viewport cycles, stable scroll/drafts, delayed step reset, repeated hide events, navigation cleanup passed; UIKit keyboard remains physical QA.');
   }
   assert.deepEqual(errors, []);
-  console.log(`${nativeInterop ? 'Native cssInterop on RNWeb' : 'RNWeb'}: visible primary buttons; no registration before explicit activation; login/recovery/registration, four eyes, campus, OTP, cooldown/remount and profile completion passed. 16 responsive screenshots. No real HTTP/email.`);
+  console.log(`${nativeInterop ? 'Native cssInterop on RNWeb' : 'RNWeb'}: visible primary buttons; explicit versioned policy acceptance, keyboard checkbox and no registration before activation; login/recovery/registration, four eyes, campus, OTP, cooldown/remount and profile completion passed. 19 responsive screenshots. No real HTTP/email.`);
 } finally { await browser.close(); }

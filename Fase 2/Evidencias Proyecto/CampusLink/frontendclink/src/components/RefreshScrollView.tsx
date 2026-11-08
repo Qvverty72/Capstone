@@ -1,3 +1,8 @@
+/**
+ * Contenedor reutilizable para listas y modales con refresco nativo y web táctil.
+ * El contexto permite registrar la vista de datos activa; callbacks/refs coordinan
+ * el gesto sin mezclar la carga de dominio con la implementación del ScrollView.
+ */
 import type { ScrollViewInstance } from 'react-native';
 import { APP_COLORS } from '@/types/colors';
 import { createContext, forwardRef, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -13,6 +18,10 @@ const RefreshContext = createContext<{
 const PULL_THRESHOLD = 64;
 
 /** Registra la vista de datos visible; formularios desmontados no compiten por actualizar. */
+/**
+ * Registra callback, estado y etiqueta de la vista hija en el contexto más cercano.
+ * El cleanup retira su registro al dejar de estar activa; no ejecuta HTTP por sí mismo.
+ */
 export function useScrollRefresh(onRefresh: () => void, refreshing: boolean, enabled: boolean, label = 'el contenido', active = true) {
   const register = useContext(RefreshContext)?.register;
   useLayoutEffect(() => {
@@ -76,6 +85,10 @@ export const RefreshScrollView = forwardRef<ScrollViewInstance, RefreshScrollVie
     if (typeof forwardedRef === 'function') forwardedRef(value);
     else if (forwardedRef) forwardedRef.current = value;
   }, [forwardedRef]);
+/**
+ * El bloqueo en ref es inmediato: evita dos solicitudes desde el mismo gesto
+ * antes de que React publique el próximo valor de refreshing.
+ */
   const refresh = useCallback(() => {
     const current = latest.current;
     if (!current?.enabled || current.refreshing || locked.current) return;

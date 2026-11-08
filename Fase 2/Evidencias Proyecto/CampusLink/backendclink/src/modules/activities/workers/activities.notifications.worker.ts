@@ -1,3 +1,8 @@
+/**
+ * Proceso periódico del backend para conciliar vencimientos y entregar avisos.
+ * Los eventos nacen en MongoDB y se entregan mediante users/public; confirmar solo
+ * tras entregar admite reintentos y exige idempotencia en el destino.
+ */
 import type { PendingActivityNotification } from '../types/activities.notifications.types.js';
 import { enqueuePublishedOfficialOccurrences, findPendingActivityNotifications, findNotificationParticipants, markNotificationDelivered } from '../repositories/activities.notifications.repository.js';
 import { deliverActivityNotification } from '../../users/public.js';
@@ -25,6 +30,10 @@ export async function dispatchActivityNotifications(dependencies = defaults, sto
     try {
       const recipients = task.event.type === 'ACTIVITY_CHANGED' ? await dependencies.participants(task) : null;
       await dependencies.deliver(task, recipients);
+/**
+ * Si la entrega tuvo éxito pero este acuse falla, la tarea volverá a intentarse.
+ * Por ello el destino debe reconocer el mismo evento sin duplicar la notificación.
+ */
       await dependencies.acknowledge(task);
       delivered++;
     } catch { failed++; }
@@ -50,6 +59,11 @@ export async function maintainActivities(dependencies = maintenanceDefaults, sto
 }
 
 /** Los eventos persistidos sobreviven reinicios; fallos SQL no invalidan una actividad ya publicada. */
+/**
+ * Ejecuta una tanda inicial y programa la siguiente al terminar, sin solaparse.
+ * Devuelve: Función async de cierre: cancela el próximo timer y espera la tanda actual.
+ * El intervalo de 60 segundos es por proceso; no constituye una cola externa.
+ */
 export function startActivityNotificationWorker(): () => Promise<void> {
   let stopped = false;
   let timer: ReturnType<typeof setTimeout> | undefined;

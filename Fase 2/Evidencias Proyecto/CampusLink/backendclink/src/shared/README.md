@@ -82,9 +82,9 @@ Devuelve `{ status, modules }`. El estado global es `ok` solo si todos los módu
 Tiene dos consumidores principales:
 
 - [bootstrap.ts](../bootstrap.ts): verifica las dependencias antes de abrir el puerto HTTP. Si la verificación falla, el arranque se detiene y se cierran las conexiones abiertas.
-- [routes/index.ts](../routes/index.ts): atiende `GET /api/v1/ready`. Responde `200` con el resultado global o `503` con un error genérico de dependencia.
+- [routes/index.ts](../routes/index.ts): atiende `GET /api/v1/ready` mediante [database/readiness.ts](../database/readiness.ts), con sondas reales de MongoDB, PostgreSQL, Redis y Supabase. Solo publica estados genéricos `ok` o `unavailable`, con HTTP `200` o `503`.
 
-La ruta `/ready` y los diagnósticos individuales solo se registran con `NODE_ENV=development` y `HEALTH_DIAGNOSTICS_ENABLED=true`. El arranque verifica las dependencias también cuando esas rutas están deshabilitadas.
+La ruta `/ready` está disponible también en producción. Los diagnósticos individuales solo se registran con `NODE_ENV=development` y `HEALTH_DIAGNOSTICS_ENABLED=true`. El arranque verifica las dependencias y las siete sondas de módulos antes de abrir el puerto.
 
 El diagnóstico de auth comprueba su tabla de perfiles; no equivale a validar una sesión real en Supabase Auth.
 
@@ -104,7 +104,7 @@ Una solicitud al health de un módulo pasa por:
 
 El controlador recibe el resultado y utiliza `sendModuleHealth` para responder. Los repositories comprueban disponibilidad mediante lecturas acotadas; no insertan documentos ni filas. Una tabla o colección existente vacía es válida. La ausencia de una colección requerida produce un fallo.
 
-`GET /api/v1/health` comprueba únicamente que el proceso atiende solicitudes. `GET /api/v1/ready` comprueba las dependencias de los siete módulos.
+`GET /api/v1/health` comprueba únicamente que el proceso atiende solicitudes. `GET /api/v1/ready` comprueba las cuatro dependencias mediante lecturas, sin pasar por el limitador Redis. [health/readiness.ts](health/readiness.ts) comparte un lote entre solicitudes concurrentes, cachea brevemente éxitos y fallos, y conserva el espacio de una operación que excedió su timeout hasta que termine, evitando acumular sondas abandonadas.
 
 ## Configuración relacionada
 

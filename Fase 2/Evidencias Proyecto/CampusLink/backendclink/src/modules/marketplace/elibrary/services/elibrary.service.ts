@@ -1,9 +1,15 @@
+/**
+ * Casos base de biblioteca digital: contexto, alta y lectura de publicaciones.
+ * Los recursos se consultan por institución; el campus actual se revalida al operar.
+ * Archivos PDF viven en Storage y sus referencias/metadatos en PostgreSQL.
+ */
 import { createModuleHealthCheck } from '../../../../shared/health/module-health.js';
 import { probeElibraryDependencies } from '../repositories/elibrary.repository.js';
 import type { ElibraryHealth } from '../types/elibrary.types.js';
 import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { ApiError } from '../../../../shared/errors/api-error.js';
+import { assertPublicContent } from '../../../../shared/moderation/content-moderation.js';
 import { withPostgresTransaction } from '../../../../database/supabase/postgres.js';
 import { requireCampusCapability } from '../../../auth/domain/auth.authorization.js';
 import { lockAccountContext } from '../../../auth/public.js';
@@ -18,6 +24,11 @@ const unavailable = () => new ApiError(503, 'DEPENDENCY_UNAVAILABLE', 'No se pud
 export function authorizeDigitalAccess(auth: VerifiedAuthConnection) {
   requireCampusCapability(auth, auth.campusId, 'general');
 }
+/**
+ * Relee perfil y roles con locks compartidos por operaciones del dominio.
+ * Impide usar un formulario del campus anterior tras cambiar el contexto del usuario.
+ * Devuelve: Cuenta actual y campus activo perteneciente a la misma institución.
+ */
 export async function currentDigitalContext(client: PoolClient, auth: VerifiedAuthConnection) {
   const { profile, roles } = await lockAccountContext(client, auth.userId);
   if (!profile || profile.campus_id !== auth.campusId || profile.institucion_id !== auth.profile.institucion_id) {
@@ -31,9 +42,16 @@ export async function currentDigitalContext(client: PoolClient, auth: VerifiedAu
   }
   return { current, campus };
 }
+/**
+ * Valida PDF y metadatos, carga el objeto y luego confirma referencias SQL.
+ * Revalida el catálogo tras la carga y compensa objetos sin referencia ante errores.
+ * Devuelve: Publicación persistida; una respuesta de COMMIT ambigua requiere conciliación.
+ */
 export async function createDigitalPublication(auth: VerifiedAuthConnection, raw: unknown, upload?: DigitalUpload): Promise<DigitalPublication> {
   requireCampusCapability(auth, auth.campusId, 'general');
-  const input = parseDigitalInput(raw), file = await validateDigitalFile(upload);
+  const input = parseDigitalInput(raw);
+  assertPublicContent({ title: input.title, description: input.description });
+  const file = await validateDigitalFile(upload);
   // Rechaza selecciones inválidas antes de cargar bytes; se comprueban de nuevo tras Storage.
   if (input.careerIds.length || input.subjectIds.length) {
     try {

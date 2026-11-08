@@ -1,3 +1,8 @@
+/**
+ * Biblioteca privada paginada: diferencia publicaciones adquiridas de las propias.
+ * Reutiliza las pruebas de adquisición del repositorio y agrega actividad solo para
+ * el propietario; consultar esta lista no sustituye la autorización de cada descarga.
+ */
 import { withPostgresTransaction } from '../../../../database/supabase/postgres.js';
 import { ApiError } from '../../../../shared/errors/api-error.js';
 import { createPaginatedResult } from '../../../../shared/pagination/pagination.js';

@@ -2,6 +2,16 @@
   "expo": {
     "name": "CampusLink",
     "slug": "campuslink",
+    "version": "0.1.2",
+    "android": {
+      "package": "cl.campuslink.app",
+      "versionCode": 3
+    },
+    "ios": {
+      "bundleIdentifier": "cl.campuslink.app",
+      "buildNumber": "1",
+      "supportsTablet": true
+    },
     "scheme": "campuslink",
     "userInterfaceStyle": "automatic",
     "web": {

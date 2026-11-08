@@ -1,6 +1,11 @@
+/**
+ * Modelo de presentación del catálogo físico: filtros con debounce, página y galería.
+ * Renueva URLs firmadas cada 50 segundos cuando hay imágenes; el polling conserva
+ * la referencia de tarjetas sin cambios para reducir renders.
+ */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { AuthApiError } from '@/lib/api/authenticated-request';
+import { AuthApiError, apiFormErrorMessage } from '@/lib/api/authenticated-request';
 import { operationId } from '@/lib/api/operation-id';
 import { recordResourceOpening } from '../../api/resourceInteractions';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
@@ -32,15 +37,23 @@ export function usePhysicalgoodsResources(catalogActive = true) {
   const [editCategory, setEditCategory] = useState(''), [busy, setBusy] = useState(false), [draftImages, setDraftImages] = useState<PublicationPhoto[]>([]);
   const mutation = useRef<AbortController | null>(null), running = useRef(false), mounted = useRef(true);
   const selectedRef = useRef(selectedId), savedCategory = useRef(''); selectedRef.current = selectedId;
+/**
+ * Identifica una apertura explícita del detalle. Renovar la firma de la misma
+ * galería conserva esa clave para no registrar otra vista analítica.
+ */
   const opening = useRef<{id:string;key:string;recorded:boolean} | null>(null);
   const galleryRef = useRef(gallery), draftImagesRef = useRef(draftImages), picking = useRef(false);
   galleryRef.current = gallery; draftImagesRef.current = draftImages;
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; mutation.current?.abort(); }; }, []);
   function report(reason: unknown, setMessage: (message: string) => void) {
     if (reason instanceof AuthApiError && [401, 403].includes(reason.status)) auth.refreshIdentity();
-    else setMessage(reason instanceof AuthApiError ? reason.serverMessage || 'No se pudo completar la operación.' : reason instanceof Error ? reason.message : 'No se pudo completar la operación.');
+    else setMessage(reason instanceof AuthApiError ? apiFormErrorMessage(reason, 'No se pudo completar la operación.') : reason instanceof Error ? reason.message : 'No se pudo completar la operación.');
   }
   useEffect(() => {
+/**
+ * La carga inicial muestra estado; las renovaciones posteriores pueden ser silenciosas.
+ * El cleanup cancela timer y fetch al cambiar filtros, página o activación del catálogo.
+ */
     const abort = new AbortController(); let timer: ReturnType<typeof setTimeout> | undefined,renew=false;
     setLoading(true); setError(null); setPage(null);
     async function read(silent=false){

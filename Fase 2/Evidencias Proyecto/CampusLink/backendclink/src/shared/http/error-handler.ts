@@ -1,3 +1,8 @@
+/**
+ * Última frontera de errores de Express: convierte fallos a sobres públicos.
+ * Distingue JSON inválido, exceso de tamaño, MongoDB y ApiError; los fallos
+ * inesperados se reducen a 500 sin devolver el mensaje interno del proveedor.
+ */
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { MongoError } from 'mongodb';
 
@@ -31,6 +36,10 @@ export const apiErrorHandler: ErrorRequestHandler = (
   response,
   next,
 ) => {
+/**
+ * Una respuesta ya iniciada no puede recibir otro cuerpo JSON.
+ * En ese caso Express conserva el manejo del error y del cierre de conexión.
+ */
   if (response.headersSent) {
     next(error);
     return;

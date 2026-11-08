@@ -9,10 +9,10 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
 
-FROM node:22-alpine AS development
+FROM node:22-alpine AS runtime
 
 WORKDIR /app
-ENV NODE_ENV=development PORT=3000
+ENV NODE_ENV=production PORT=3000
 
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev

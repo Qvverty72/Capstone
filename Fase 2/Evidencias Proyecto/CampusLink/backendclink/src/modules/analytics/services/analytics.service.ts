@@ -1,3 +1,8 @@
+/**
+ * Aplicación analítica: valida alcance institucional, consulta SQL/Mongo y guarda
+ * reportes con versión de cálculo. Distingue cero observado, datos no disponibles
+ * y cobertura parcial; las consultas de ambos motores no comparten snapshot.
+ */
 import { createModuleHealthCheck } from '../../../shared/health/module-health.js';
 import { probeAnalyticsDependencies } from '../repositories/analytics.repository.js';
 import type { AnalyticalReport, AnalyticsHealth, DashboardData, DashboardMetrics, DashboardPeriod, DashboardQuery, DemandCount, HistoricalReportsQuery } from '../types/analytics.types.js';
@@ -12,6 +17,9 @@ import { countActivityInteractions } from '../repositories/analytics.activities.
 import { findAnalyticalReport, insertAnalyticalReport, readAnalyticsPermissions, readHistoricalReports, readReportAuthorEmail } from '../repositories/analytics.reports.repository.js';
 import { findAnalyticsResource, insertResourceView } from '../repositories/analytics.repository.js';
 import { readDashboardMetrics, readDashboardOptions } from '../repositories/analytics.dashboard.repository.js';
+import { readAcademicDemand, readAudienceCareers } from '../repositories/analytics.analysis.repository.js';
+import { ANALYSIS_DEFINITIONS, analyzeActivityAudience } from '../domain/analytics.analysis.js';
+import type { ActivityAudienceFact } from '../types/analytics.analysis.types.js';
 
 export const getAnalyticsHealth: () => Promise<AnalyticsHealth> =
   createModuleHealthCheck('analytics', probeAnalyticsDependencies);
@@ -67,6 +75,11 @@ export async function getDashboardOptions(auth: VerifiedAuthConnection) {
   }
 }
 
+/**
+ * Convierte fechas civiles America/Santiago a intervalos y recorta al instante de generación.
+ * Las cifras provienen de persistencia; el cliente solo aporta filtros autorizables.
+ * Devuelve: Métricas totales y por intervalo con notas de cobertura y análisis.
+ */
 export async function getDashboard(auth: VerifiedAuthConnection, rawQuery: unknown): Promise<DashboardData> {
   const query = parseDashboardQuery(rawQuery, auth.campusId, auth.profile.institucion_id);
   requireActiveAccount(auth.profile, auth.userId);
@@ -78,11 +91,27 @@ export async function getDashboard(auth: VerifiedAuthConnection, rawQuery: unkno
   const until = new Date(Math.min(intervals[intervals.length - 1].until.getTime(), generatedAt.getTime()));
   const windows = intervals.filter(row => row.from < until).map(row => ({ ...row, until: new Date(Math.min(row.until.getTime(), until.getTime())) }));
   try {
-    const sql = await withPostgresTransaction(client => readDashboardMetrics(client, query.campusIds, query.institutionId, from, until, query.careerId, windows, query.grouping));
+    const sql = await withPostgresTransaction(async client => {
+      const metrics = await readDashboardMetrics(client, query.campusIds, query.institutionId, from, until, query.careerId, windows, query.grouping);
+      if (!metrics) return null;
+      return { ...metrics, academic: from < until ? await readAcademicDemand(client, query.campusIds, from, until, query.careerId, windows) : null };
+    });
     if (!sql) throw new ApiError(403, 'FORBIDDEN', 'La institución, campus o carrera no están disponibles en tu ámbito de reportería.');
     // Un rango futuro no afirma ceros observados ni proyecta el estado actual de cuentas.
     const activities = from < until ? await countActivityInteractions(query.campusIds, from, until, sql.careerUserIds, windows, query.grouping)
-      : { joined: 0, legacyEvents: 0, intervals: [] };
+      : { joined: 0, legacyEvents: 0, intervals: [], audience: [] as ActivityAudienceFact[] };
+    const analysisData = from < until ? await withPostgresTransaction(async client => ({
+      careers: await readAudienceCareers(client, [...new Set(activities.audience.map(row => row.userId))], query.institutionId),
+      resources: sql.academic,
+    })) : null;
+    const audiencePeriods = new Map<string, ActivityAudienceFact[]>();
+    for (const fact of activities.audience) {
+      const rows = audiencePeriods.get(fact.period) ?? []; rows.push(fact); audiencePeriods.set(fact.period, rows);
+    }
+    const analysis = (key: string) => analysisData ? {
+      activities: analyzeActivityAudience(key === 'total' ? activities.audience : audiencePeriods.get(key) ?? [], analysisData.careers, query.careerId),
+      resources: analysisData.resources?.get(key) ?? { careers: [], subjects: [] }, definitions: ANALYSIS_DEFINITIONS,
+    } : null;
     const period = { from: query.from, to: query.to, timeZone: ANALYTICS_TIME_ZONE, cutoff: until.toISOString() };
     const metrics = (row: typeof sql.intervals[number], participation: { joined: number; legacyEvents: number }, period: DashboardPeriod, available = true): DashboardMetrics => {
       const metric = (value: number) => ({ value: available ? value : null, period, scope: sql.scope });
@@ -93,22 +122,22 @@ export async function getDashboard(auth: VerifiedAuthConnection, rawQuery: unkno
         subjectDemand: { ...metric(subjects.views + subjects.requests), ...subjects, subjects: row.subjectDemand },
         activityParticipation: { ...metric(participation.joined), label: 'Inscripciones registradas', legacyEvents: participation.legacyEvents } };
     };
-    return { ...metrics(sql, activities, period, from < until), generatedAt: generatedAt.toISOString(), grouping: query.grouping,
+    return { ...metrics(sql, activities, period, from < until), analysis: analysis('total'), generatedAt: generatedAt.toISOString(), grouping: query.grouping,
       intervals: intervals.map(interval => {
         if (interval.from >= until) return { key: interval.key, label: interval.label, period: interval.period,
           status: 'unavailable', coverage: 'unavailable', metrics: null };
         const row = sql.intervals.find(row => row.key === interval.key);
         const activity = activities.intervals.find(row => row.key === interval.key);
         if (!row || !activity) throw new Error('Missing dashboard interval.');
-        const result = metrics(row, activity, { ...interval.period, cutoff: new Date(Math.min(interval.until.getTime(), until.getTime())).toISOString() });
+        const result = { ...metrics(row, activity, { ...interval.period, cutoff: new Date(Math.min(interval.until.getTime(), until.getTime())).toISOString() }), analysis: analysis(interval.key) };
         return { key: interval.key, label: interval.label, period: result.period,
-          status: row.resourceDemand.views + row.resourceDemand.requests + activity.joined === 0 ? 'no_activity' : 'recorded',
+          status: row.resourceDemand.views + row.resourceDemand.requests + activity.joined + activity.viewed + activity.left === 0 ? 'no_activity' : 'recorded',
           coverage: 'partial', metrics: result };
       }),
       notes: [
         'Las cifras corresponden a registros disponibles; las vistas antiguas y las inscripciones importadas pueden tener cobertura parcial.',
         'Referencia institucional America/Santiago: semanas de lunes a domingo y meses calendario, respetando el horario de verano. Los extremos se recortan al rango; el período en curso se consulta hasta la fecha de generación. Los intervalos futuros no tienen datos.',
-        'Sin actividad significa cero vistas, solicitudes e inscripciones registradas; no demuestra cobertura histórica completa. Los usuarios activos son un saldo al corte de cada intervalo y no deben sumarse.',
+        'Sin actividad significa cero vistas, solicitudes, inscripciones y retiros registrados; no demuestra cobertura histórica completa. Los usuarios activos son un saldo al corte de cada intervalo y no deben sumarse.',
         'Usuarios: estado reconstruido al corte con auditoría; la pertenencia a campus y las asociaciones de asignaturas son las disponibles al consultar.',
         'Carreras: se usan las asociaciones actuales del usuario o recurso. En actividades se considera la carrera del participante. Una persona o recurso puede figurar en varias carreras; sus resultados no deben sumarse como exclusivos.',
       ] };
@@ -119,6 +148,10 @@ export async function getDashboard(auth: VerifiedAuthConnection, rawQuery: unkno
 }
 
 /** Un solo cálculo/validación para tablero y reporte; nunca recibe cifras del cliente. */
+/**
+ * Congela el resultado del tablero y revalida permisos antes de guardarlo en SQL.
+ * Devuelve: Instantánea con autor, versión y filtros; descargarla luego no recalcula métricas.
+ */
 export async function generateAnalyticalReport(auth: VerifiedAuthConnection, filters: unknown): Promise<AnalyticalReport> {
   const dashboard = await getDashboard(auth, filters);
   const normalized: DashboardQuery = { institutionId: dashboard.scope.institutionId,
@@ -135,7 +168,7 @@ export async function generateAnalyticalReport(auth: VerifiedAuthConnection, fil
       const current = { ...auth, profile, roles, permissions: await readAnalyticsPermissions(client, auth.userId) };
       for (const id of normalized.campusIds) requireCampusCapability(current, id, 'reports');
       const report: AnalyticalReport = { ...dashboard, id: randomUUID(),
-        generatedBy: { userId: auth.userId, name: profile.nombre_completo, email: await readReportAuthorEmail(client, auth.userId) }, calculationVersion: 'campuslink-kpi-v1' };
+        generatedBy: { userId: auth.userId, name: profile.nombre_completo, email: await readReportAuthorEmail(client, auth.userId) }, calculationVersion: 'campuslink-kpi-v2' };
       await insertAnalyticalReport(client, report, normalized, intervals[0].from, intervals[intervals.length - 1].until);
       return report;
     });

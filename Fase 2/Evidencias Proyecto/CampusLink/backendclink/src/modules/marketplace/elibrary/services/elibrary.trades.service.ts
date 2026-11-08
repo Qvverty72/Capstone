@@ -1,3 +1,8 @@
+/**
+ * Solicitudes y acuerdos digitales dentro de una institución.
+ * Revalida participantes y contexto bajo un orden común de bloqueos; las acciones
+ * usan campos permitidos y no confían en precios o identidades enviados por el cliente.
+ */
 import type { PoolClient } from 'pg';
 import { notifyResourceRequest } from '../../public.js';
 import { withPostgresTransaction } from '../../../../database/supabase/postgres.js';
@@ -23,6 +28,11 @@ export function digitalAction(raw: unknown, fields: string[] = []): Record<strin
 const missing = () => new ApiError(404,'NOT_FOUND','No se encontró el recurso o acuerdo en tu institución.');
 const conflict = (message: string) => new ApiError(409,'CONFLICT',message);
 /** Perfiles ordenados → barrera de persistencia → publicación → solicitud/acuerdo. */
+/**
+ * Ordena locks de perfiles y luego publicación para coordinar operaciones concurrentes.
+ * Los IDs de solicitud/acuerdo restringen qué participante puede resolver o consultar.
+ * Devuelve: Resultado del callback dentro de la transacción SQL autorizada.
+ */
 export async function withDigitalTradeContext<T>(auth: VerifiedAuthConnection, rawId: unknown,
   operation: (client: PoolClient, resource: DigitalResourceRow, current: VerifiedAuthConnection) => Promise<T>,
   ids: {requestId?:string;tradeId?:string} = {}) {

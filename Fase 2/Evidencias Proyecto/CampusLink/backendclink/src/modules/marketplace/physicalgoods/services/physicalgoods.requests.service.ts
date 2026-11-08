@@ -1,3 +1,8 @@
+/**
+ * Solicitudes de recursos físicos, recibos e historial propio.
+ * El contexto transaccional bloquea perfil y publicación; crear una solicitud
+ * no reserva el recurso. La aceptación y el acuerdo tienen sus propias transiciones.
+ */
 import type { PoolClient } from 'pg';
 import { notifyResourceRequest } from '../../public.js';
 import { ApiError } from '../../../../shared/errors/api-error.js';
@@ -59,6 +64,10 @@ export async function createPhysicalgoodsRequest(auth: VerifiedAuthConnection, p
   const operationId = parseResourceOperationId(rawOperationId);
   const requestId = operationId ? resourceOperationKey('request',auth.userId,operationId) : undefined;
   return requestContext(auth,id,async (client,resource,current) => {
+/**
+ * La clave de operación permite reintentar sin crear otra solicitud.
+ * Si se reutiliza para otro recurso, actor o mensaje se rechaza con 409.
+ */
     if (requestId) {
       const previous = await findResourceRequestOperation(client,requestId);
       if (previous) {

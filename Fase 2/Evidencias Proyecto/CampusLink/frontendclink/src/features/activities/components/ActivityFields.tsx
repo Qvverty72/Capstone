@@ -4,6 +4,7 @@ import { Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, Touchable
 import { ACTIVITY_CONTENT_LIMITS, ACTIVITY_DESCRIPTION_OPTIONS, type ActivityDraft, type ActivityLocationOption } from '../types/creation';
 import type { ActivityLocationQuery } from '../types/activity';
 import { ActivityDateTimeField } from './ActivityDateTimeField';
+import { PUBLIC_CONTENT_HINT, publicTextError } from '@/lib/validation/public-content';
 
 /** Campos de dominio compartidos por alta/edición; el catálogo de lugares no contiene mallas. */
 export function ActivityFields({ draft, change, disabled, locations, organizer, firstOccurrence = false, creationLocation, existingContent, locationDropdowns = false, allowCustomDescription = false }: {
@@ -20,6 +21,7 @@ export function ActivityFields({ draft, change, disabled, locations, organizer, 
     <View style={styles.field} key={key}><Text style={styles.label}>{label}</Text>
       <TextInput accessibilityLabel={label} placeholder={placeholder} value={draft[key]} onChangeText={value => change(key, value)}
         editable={!disabled} maxLength={maxLength} multiline={multiline} style={[styles.input, multiline && styles.description]} />
+      {publicTextError(draft[key], label, multiline) ? <Text accessibilityRole="alert" style={styles.error}>{publicTextError(draft[key], label, multiline)}</Text> : null}
     </View>;
   const choices = (key: 'buildingKey' | 'floorKey' | 'poiKey', label: string, values: { id: string; name: string }[], placeholder: string) => {
     if (locationDropdowns) {
@@ -64,6 +66,7 @@ export function ActivityFields({ draft, change, disabled, locations, organizer, 
   const hasCustomDescription = Boolean(existingContent?.description && !ACTIVITY_DESCRIPTION_OPTIONS.includes(existingContent.description));
   const customDescriptionSelected = hasCustomDescription && draft.description === existingContent?.description;
   return <View style={styles.field}>
+    <Text style={styles.text}>{PUBLIC_CONTENT_HINT}</Text>
     {organizer ? <><Text style={styles.label}>Organizador</Text><Text style={styles.text}>{organizer}</Text></> : null}
     {field('title', 'Nombre', 'Nombre de la actividad', ACTIVITY_CONTENT_LIMITS.title)}
     {allowCustomDescription ? <View style={styles.field}>
@@ -110,6 +113,7 @@ export function ActivityFields({ draft, change, disabled, locations, organizer, 
   </View>;
 }
 const styles = StyleSheet.create({ field: { gap: 10 }, label: { fontWeight: '600', color: '#0F172A' }, text: { color: '#475569', lineHeight: 21 },
+  error: { color: '#9D302A', lineHeight: 21 },
   input: { borderWidth: 1, borderColor: '#94A3B8', borderRadius: 8, padding: 12, color: '#0F172A' },
   description: { minHeight: 100, textAlignVertical: 'top' }, choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   location: { backgroundColor: '#F1F5F9', borderRadius: 8, padding: 12, color: '#0F172A', lineHeight: 21 },

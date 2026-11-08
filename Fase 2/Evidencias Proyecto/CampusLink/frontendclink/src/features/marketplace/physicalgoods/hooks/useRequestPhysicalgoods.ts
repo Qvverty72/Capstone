@@ -1,3 +1,8 @@
+/**
+ * Acción de solicitar desde una galería física ajena con mensaje del catálogo.
+ * Conserva una clave por recurso/mensaje hasta el acuse y recarga opciones al terminar;
+ * canRequest guía la UI y el servidor verifica de nuevo disponibilidad y duplicados.
+ */
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { AuthApiError } from '@/lib/api/authenticated-request';
@@ -35,6 +40,10 @@ export function useRequestPhysicalgoods(r: ReturnType<typeof usePhysicalgoodsRes
       .finally(() => { if (!abort.signal.aborted) setLoading(false); });
     return () => abort.abort();
   },[r.gallery,eligible,revision,busy]);
+/**
+ * Envía solo una selección vigente y bloquea dobles envíos con una ref síncrona.
+ * La clave se conserva ante fallos ambiguos para que el backend reconozca el reintento.
+ */
   async function send() {
     if (running.current || !r.gallery || !options?.canRequest || !options.messages.some(row=>row.code===messageCode)) return;
     const id = r.gallery.id, abort = new AbortController(); mutation.current=abort; running.current=true; setBusy(true); setError(null);

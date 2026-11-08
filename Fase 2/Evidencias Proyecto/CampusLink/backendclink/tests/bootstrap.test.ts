@@ -52,13 +52,48 @@ test('bootstrap failures close dependencies and expose only the sanitized startu
 });
 
 test('unavailable readiness closes dependencies without opening the HTTP port', async () => {
-  let closed = 0, listened = 0;
+  let closed = 0, listened = 0, verified = 0, waited = 0;
   await assert.rejects(api.startApi({
     connect: async () => {},
-    verify: async () => ({ status: 'unavailable', modules: [] }),
+    verify: async () => { verified++; return { status: 'unavailable', modules: [] }; },
+    wait: async milliseconds => { assert.ok(milliseconds > 5000); waited++; },
     close: async () => { closed++; },
     listen: async () => { listened++; throw new Error('Must not listen'); },
   }), /API startup failed/);
   assert.equal(closed, 1);
   assert.equal(listened, 0);
+  assert.equal(verified, 3);
+  assert.equal(waited, 2);
+});
+
+test('startup recovers after transient readiness failures before opening HTTP', async () => {
+  const calls: string[] = [];
+  let attempts = 0;
+  const server = createServer();
+  const result = await api.startApi({
+    connect: async () => { calls.push('connect'); },
+    verify: async () => {
+      calls.push('verify');
+      return { status: ++attempts === 3 ? 'ok' : 'unavailable', modules: [] };
+    },
+    wait: async () => { calls.push('wait'); assert.equal(server.listening, false); },
+    close: async () => { calls.push('close'); },
+    listen: async () => { calls.push('listen'); return server; },
+  });
+  assert.equal(result, server);
+  assert.deepEqual(calls, ['connect', 'verify', 'wait', 'verify', 'wait', 'verify', 'listen']);
+});
+
+test('shutdown stops accepting HTTP immediately and drains workers before closing dependencies', async () => {
+  const server = createServer((_request, response) => response.end('ok')).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  let release!: () => void;
+  const work = new Promise<void>(resolve => { release = resolve; });
+  const closing = mock.method(MongoClient.prototype, 'close', async () => {});
+  try {
+    const stopping = api.stopApi(server, () => work);
+    assert.equal(server.listening, false);
+    await new Promise(resolve => setImmediate(resolve)); assert.equal(closing.mock.callCount(), 0);
+    release(); await stopping; assert.equal(closing.mock.callCount(), 1);
+  } finally { release(); closing.mock.restore(); }
 });

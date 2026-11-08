@@ -1,4 +1,5 @@
 import { ApiError } from '../../../../shared/errors/api-error.js';
+import { assertPublicContent } from '../../../../shared/moderation/content-moderation.js';
 import type { VerifiedAuthConnection } from '../../../auth/types/auth.types.js';
 import { editPhysicalgoods } from './physicalgoods.images.service.js';
 import { physicalgoodsId, parsePhysicalgoodsUpdate, parsePhysicalgoodsVersion } from '../validators/physicalgoods.validation.js';
@@ -14,6 +15,7 @@ async function dependency<T>(operation: () => Promise<T>) {
 /** Actualiza contenido solo para el propietario y solo si coincide la versión leída por el cliente. */
 export async function updatePhysicalgoods(auth: VerifiedAuthConnection, publicationId: unknown, body: unknown) {
   const id = physicalgoodsId(publicationId, 'publicationId'), input = parsePhysicalgoodsUpdate(body);
+  assertPublicContent({ title: input.title, description: input.description });
   return dependency(() => editPhysicalgoods(auth, id, async (client, row) => {
     if (row.updated_at !== input.updatedAt) throw new ApiError(409, 'CONFLICT', 'La publicación cambió. Recarga el detalle antes de guardar.');
     if (row.titulo !== input.title || row.descripcion !== input.description || row.estado_uso !== input.condition

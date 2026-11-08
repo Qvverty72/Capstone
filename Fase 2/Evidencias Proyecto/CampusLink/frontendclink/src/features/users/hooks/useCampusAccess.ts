@@ -1,3 +1,8 @@
+/**
+ * Estado de la pantalla administrativa: campus autorizados, catálogo, usuarios
+ * y edición versionada. Mantiene selección y solicitudes en refs para descartar
+ * respuestas obsoletas al cambiar ámbito o usuario.
+ */
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { AuthApiError } from '@/lib/api/authenticated-request';
@@ -29,6 +34,10 @@ export function useCampusAccess() {
   const pending = useRef<AbortController | null>(null);
   const selectedId = useRef<string | null>(null);
   const loadedIdentity = useRef('');
+/**
+ * Traduce estados HTTP a acciones de interfaz. Ante 401/403 limpia información
+ * administrativa y revalida identidad; ante 409 exige recargar la versión del usuario.
+ */
   function fail(reason: unknown) {
     setError(reason instanceof AuthApiError && reason.status === 409 ? 'El usuario o sus accesos cambiaron. Recarga antes de confirmar.'
       : reason instanceof AuthApiError && reason.status === 403 ? 'Tu acceso a este campus ya no está disponible.'

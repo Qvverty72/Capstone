@@ -1,4 +1,5 @@
 import type { ModuleHealth } from '../../../shared/health/health.types.js';
+import type { DashboardAnalysis } from './analytics.analysis.types.js';
 
 export type AnalyticsHealth = ModuleHealth<'analytics'>;
 
@@ -21,6 +22,8 @@ export interface DashboardMetric { value: number | null; period: DashboardPeriod
 export interface DemandCount { views: number; requests: number }
 export interface SubjectDemand extends DemandCount { subjectId: string; subjectName: string }
 export interface DashboardMetrics {
+  /** Ausente en instantáneas v1; null significa período futuro sin observaciones. */
+  analysis?: DashboardAnalysis | null;
   scope: DashboardScope;
   period: DashboardPeriod;
   activeUsers: DashboardMetric;
@@ -47,7 +50,7 @@ export interface DashboardData extends DashboardMetrics {
 export interface AnalyticalReport extends DashboardData {
   id: string;
   generatedBy: { userId: string; name: string; email?: string | null };
-  calculationVersion: 'campuslink-kpi-v1';
+  calculationVersion: 'campuslink-kpi-v1' | 'campuslink-kpi-v2';
 }
 
 export type HistoricalReportSummary = Pick<AnalyticalReport, 'id' | 'generatedAt' | 'generatedBy' | 'scope' | 'period' | 'grouping' | 'calculationVersion'>;

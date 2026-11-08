@@ -26,7 +26,7 @@ export function DigitalPublicationEditor({resource,onSaved,onClose,onBusyChange,
    </Pressable>
    <RequestButton label="Conservar publicación" disabled={editor.busy} onPress={cancel}/>
   </View>:<>
-   <PublicationSection number="1" title="Datos del recurso">
+   <PublicationSection number="1" title="Datos del recurso" content={{title:editor.title,description:editor.description}}>
     <View style={f.field}><Text style={f.label}>Nombre del recurso *</Text><TextInput accessibilityLabel="Editar título digital" value={editor.title} onChangeText={editor.setTitle} editable={!disabled} maxLength={200} style={f.input}/></View>
     <View style={f.field}><Text style={f.label}>Descripción *</Text><TextInput accessibilityLabel="Editar descripción digital" value={editor.description} onChangeText={editor.setDescription} editable={!disabled} maxLength={4000} multiline style={[f.input,f.textarea]}/></View>
    </PublicationSection>

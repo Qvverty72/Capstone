@@ -1,3 +1,8 @@
+/**
+ * Construcción y proyección pura del estado de participación, sin acceso al driver.
+ * Distingue el documento con historial interno del DTO que puede ver su propietario.
+ * Datos incoherentes generan 503 en vez de exponer una participación de otra persona.
+ */
 import { ApiError } from '../../../shared/errors/api-error.js';
 import type { ActivityParticipationDocument, ActivityParticipationDto } from '../types/activities.types.js';
 import type { ObjectId } from 'mongodb';
