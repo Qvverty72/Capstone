@@ -1,3 +1,8 @@
+/**
+ * Lectura de catálogo/galería y mutaciones de imágenes o categoría.
+ * Combina locks de publicación, auditoría y URLs firmadas; ownerOnly distingue
+ * edición exclusiva del dueño de operaciones que admiten administración del campus.
+ */
 import { randomUUID } from 'node:crypto';
 import { notifyResourceUpdated } from '../../public.js';
 import type { PoolClient } from 'pg';
@@ -66,6 +71,10 @@ export async function getPhysicalgoodsGallery(auth: VerifiedAuthConnection, publ
       if (!row) throw new ApiError(404, 'NOT_FOUND', 'La publicación no está disponible en tu campus.');
       return { row, originalTerms:await findPhysicalgoodsOriginalTerms(client,id), images: await findPhysicalgoodsImages(client, id), reputation: await findPhysicalgoodsOwnerReputation(client, row.propietario_id, row.campus_id) };
     });
+/**
+ * Las firmas se generan después de liberar la conexión SQL de esta lectura.
+ * Cada ruta almacenada se contrasta con bucket y campus antes de firmarla.
+ */
     const images = [];
     for (const image of result.images) {
       if (image.bucket_id !== PHYSICALGOODS_BUCKET || !image.storage_path.startsWith(auth.campusId + '/')) throw new Error('Invalid stored image');

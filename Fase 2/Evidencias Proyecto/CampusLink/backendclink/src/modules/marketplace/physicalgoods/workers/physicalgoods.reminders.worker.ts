@@ -1,6 +1,16 @@
+/**
+ * Planificador local de recordatorios físicos, iniciado desde server.ts.
+ * El servicio dispatch conserva selección/entrega; este archivo solo programa tandas,
+ * registra fallos seguros y ofrece drenaje para el cierre ordenado.
+ */
 import { dispatchPhysicalgoodsReminders } from '../services/physicalgoods.reminders.service.js';
 
 /** Sigue el patrón de mantenimiento existente: tanda al iniciar, sin solapamiento y cierre que espera la ejecución. */
+/**
+ * Inicia inmediatamente y espera al final de cada tanda antes de programar otra.
+ * @param dispatch Operación inyectable para comprobar el worker sin servicios externos.
+ * @returns Callback de parada que cancela el timer y espera el trabajo actual.
+ */
 export function startPhysicalgoodsReminderWorker(dispatch=dispatchPhysicalgoodsReminders):()=>Promise<void> {
   let stopped=false,timer:ReturnType<typeof setTimeout>|undefined;
   let running:Promise<void>;
