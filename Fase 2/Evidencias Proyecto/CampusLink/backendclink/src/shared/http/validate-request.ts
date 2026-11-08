@@ -1,3 +1,8 @@
+/**
+ * Adaptador entre parsers de datos desconocidos y controladores Express.
+ * Acumula errores de params/query/body; solo publica resultados normalizados
+ * en response.locals si todas las secciones configuradas son válidas.
+ */
 import type { RequestHandler, Response } from 'express';
 
 import { ApiError } from '../errors/api-error.js';
@@ -43,6 +48,11 @@ export function validateRequest(parsers: RequestParsers): RequestHandler {
 }
 
 /** Lee los valores normalizados que dejó el `validateRequest` previo de la ruta. */
+/**
+ * El tipo genérico describe lo que la ruta debe haber validado; no valida por sí solo.
+ * El controlador depende del orden de middleware para que locals contenga esos datos.
+ * @returns Datos ya normalizados, o lanza un error si falta el middleware previo.
+ */
 export function getValidatedRequest<T>(response: Response): T {
   const validatedRequest = response.locals.validatedRequest as T | undefined;
   if (validatedRequest === undefined) {
