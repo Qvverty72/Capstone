@@ -32,7 +32,7 @@ Se crearon además la [guía de recorrido](GUIA_DOCUMENTACION_CAMPUSLINK.md), la
 informe. El trabajo se registró progresivamente por responsabilidad y caso de uso,
 mediante commits locales con Conventional Commits.
 
-El código y los tipos de los 125 fuentes cambiados conservan los mismos tokens
+El código y los tipos de los 125 archivos fuente cambiados conservan los mismos tokens
 al excluir comentarios y espacios. También se comparó su emisión TypeScript sin
 comentarios con la base y fue idéntica. Pasan los typechecks, el build backend,
 las suites locales y el comprobador de arquitectura. La exportación web de Expo
@@ -48,8 +48,92 @@ en desarrollo frente a una sonda obligatoria de arranque.
 ## B. Historial de commits
 
 <!-- HISTORIAL_INICIO -->
-El inventario ordenado se incorpora en el commit de cierre después de registrar
-este informe, para incluir su identificador real y la cantidad final comprobada.
+**Total al cierre: 67 commits nuevos**, contados desde la base; los 66 primeros
+figuran con hash real y el último es este registro de cierre. Todos corresponden
+a cambios no vacíos. Los mensajes de la tabla resumen el cambio de cada bloque.
+
+| Orden | Commit | Cambio documentado | Alcance |
+| --- | --- | --- | --- |
+| 1 | `bc75a3f` | docs(architecture): registra estructura y recorrido inicial de CampusLink | 1 archivo |
+| 2 | `215c908` | docs(backend): explica arranque workers y cierre ordenado | 2 archivos |
+| 3 | `5a0bbbd` | docs(http): detalla ensamblaje de Express y rutas versionadas | 2 archivos |
+| 4 | `d24595d` | docs(database): aclara pool MongoDB y sus límites de conexión | 1 archivo |
+| 5 | `abd2ab9` | docs(database): explica clientes Supabase y aislamiento de sesiones | 1 archivo |
+| 6 | `4db92e5` | docs(database): documenta transacciones PostgreSQL y liberación del pool | 1 archivo |
+| 7 | `6b7e4aa` | docs(database): detalla contador Redis y reconexión de cuotas | 1 archivo |
+| 8 | `f4307b5` | docs(health): distingue disponibilidad de dependencias y módulos | 3 archivos |
+| 9 | `f41fd1a` | docs(http): explica contratos de respuesta y sanitización de errores | 2 archivos |
+| 10 | `7fac00c` | docs(security): documenta políticas explícitas y validación HTTP | 2 archivos |
+| 11 | `a3c04a3` | docs(security): explica cuotas por origen identidad y memoria | 2 archivos |
+| 12 | `15315dc` | docs(auth): explica rutas públicas contexto verificado y controladores | 3 archivos |
+| 13 | `1cbef8e` | docs(auth): documenta provisión institucional y persistencia de identidad | 2 archivos |
+| 14 | `1178c3e` | docs(auth): aclara capacidades por campus y propiedad de recursos | 2 archivos |
+| 15 | `086e2e5` | docs(users): explica edición académica y resumen personal | 3 archivos |
+| 16 | `0ccaf4b` | docs(users): detalla alcance administrativo y versiones de acceso | 1 archivo |
+| 17 | `f8a815a` | docs(audit): explica mezcla cronológica de historiales SQL y Mongo | 1 archivo |
+| 18 | `f894755` | docs(notifications): documenta operaciones propias y revalidación de cuenta | 1 archivo |
+| 19 | `83afb99` | docs(maps): explica mapa activo autorización y persistencia híbrida | 3 archivos |
+| 20 | `02ffb0a` | docs(activities): explica consultas visibles y rutas de actividades | 2 archivos |
+| 21 | `db5fc01` | docs(activities): documenta publicación atómica y cupo comunitario | 2 archivos |
+| 22 | `8839166` | docs(activities): explica vista previa y revalidación transaccional de edición | 2 archivos |
+| 23 | `e46c496` | docs(activities): explica participación propia e idempotencia de interacciones | 3 archivos |
+| 24 | `1c17651` | docs(activities): detalla recurrencia calendario y horarios ambiguos | 1 archivo |
+| 25 | `2f8b0b1` | docs(workers): explica entrega diferida y cierre de mantenimiento de actividades | 1 archivo |
+| 26 | `762c564` | docs(physicalgoods): explica publicación SQL y compensación en Storage | 1 archivo |
+| 27 | `c1fbf48` | docs(physicalgoods): documenta solicitudes acuerdos y doble confirmación | 2 archivos |
+| 28 | `3b4bf07` | docs(physicalgoods): explica galería privada y worker de recordatorios | 2 archivos |
+| 29 | `93b3160` | docs(elibrary): explica publicación digital y contexto institucional | 1 archivo |
+| 30 | `fac4e95` | docs(elibrary): documenta multipart archivos privados y muestra PDF | 3 archivos |
+| 31 | `939f855` | docs(elibrary): explica acuerdos digitales y biblioteca adquirida | 2 archivos |
+| 32 | `273fc60` | docs(recommendations): explica puntuación digital y señales verificables | 2 archivos |
+| 33 | `5a410db` | docs(reports): explica denuncias y revisión de evidencia por campus | 2 archivos |
+| 34 | `24d35b8` | docs(reports): detalla resolución recuperable entre SQL y MongoDB | 1 archivo |
+| 35 | `8027362` | docs(analytics): explica métricas períodos y snapshots guardados | 1 archivo |
+| 36 | `76b8c19` | docs(analytics): documenta exportación fiel de reportes PDF y Excel | 2 archivos |
+| 37 | `4f17740` | docs(navigation): explica providers guards y redirección inicial | 2 archivos |
+| 38 | `93fedf1` | docs(auth-ui): explica restauración de sesión y revalidación de identidad | 2 archivos |
+| 39 | `4ca7da5` | docs(auth-ui): documenta formularios de acceso registro y recuperación | 3 archivos |
+| 40 | `a066623` | docs(api-client): detalla transporte autenticado sobres y errores acotados | 1 archivo |
+| 41 | `a09f1f9` | docs(profile-ui): explica caché de ámbito y edición académica versionada | 2 archivos |
+| 42 | `eabf695` | docs(admin-ui): documenta contexto cancelación y filtros de accesos y auditoría | 2 archivos |
+| 43 | `63cabf4` | docs(notifications-ui): explica foco paginación y confirmación de lecturas | 1 archivo |
+| 44 | `05a2098` | docs(map-ui): explica carga remota y limpieza del ámbito del mapa | 2 archivos |
+| 45 | `9288622` | docs(map-ui): documenta frontera web y recuperación de WebGL | 2 archivos |
+| 46 | `fb548f8` | docs(map-api): aclara adaptación espacial y contrato con la cámara | 2 archivos |
+| 47 | `766c02d` | docs(activities-ui): explica ámbito de consultas y revalidación por vencimiento | 1 archivo |
+| 48 | `ebfe404` | docs(activities-ui): documenta ficha participación e intención idempotente | 1 archivo |
+| 49 | `cd2a15e` | docs(activities-ui): explica publicación recurrente y edición con preview | 2 archivos |
+| 50 | `1618733` | docs(marketplace-ui): explica catálogo físico y renovación de imágenes firmadas | 1 archivo |
+| 51 | `9b86e90` | docs(marketplace-ui): documenta publicación física y cola de fotos pendientes | 1 archivo |
+| 52 | `3ee3d63` | docs(marketplace-ui): explica solicitud idempotente y conciliación de acuerdos | 3 archivos |
+| 53 | `b0f98da` | docs(elibrary-ui): explica estado del catálogo y recomendaciones digitales | 2 archivos |
+| 54 | `d56adb4` | docs(elibrary-ui): documenta selección PDF multipart y validación local | 2 archivos |
+| 55 | `4a8fb9a` | docs(elibrary-ui): explica acuerdos preview y descarga multiplataforma | 3 archivos |
+| 56 | `abe9e4e` | docs(reports-ui): explica denuncia propia y resolución administrativa | 2 archivos |
+| 57 | `ba7f092` | docs(analytics-ui): documenta consulta generación histórica y exportación | 3 archivos |
+| 58 | `dcd5176` | docs(ui): explica refresco compartido y safe area por plataforma | 2 archivos |
+| 59 | `50adcfd` | docs(validation): explica moderación del servidor y validación temprana del cliente | 2 archivos |
+| 60 | `daea484` | docs(pagination): explica parsers seguros y lectura de una fila adicional | 1 archivo |
+| 61 | `4705b35` | docs(routes): completa mapa de endpoints y diferencias de transporte | 6 archivos |
+| 62 | `ec8ff79` | docs(api-ui): explica contratos de sesión perfil denuncias y analítica | 4 archivos |
+| 63 | `aa62b05` | docs(components): documenta composición visual y reutilización accesible | 5 archivos |
+| 64 | `f9c5bd5` | docs(files): precisa inspección PDF y límites de la extracción aislada | 2 archivos |
+| 65 | `9a1a17b` | docs(infra): explica entorno Docker y límites de verificación | 1 archivo |
+| 66 | `43c8dd5` | docs(review): incorpora evaluación técnica arquitectura y guía de estudio | 1 archivo |
+| 67 | Este commit (autorreferencia) | `docs(history): registra los 67 commits y el cierre de la revisión` | Historial completo y comprobaciones finales del informe. |
+
+El hash de un commit depende de su contenido: incluir aquí su propio hash completo
+produciría una referencia circular. El último se identifica por su mensaje exacto;
+los hashes de los 66 anteriores sí están fijados. Para obtener el identificador del
+cierre sin depender de que HEAD conserve esa posición:
+
+```powershell
+git log JP_comments --format="%h %s" --fixed-strings --grep="docs(history): registra los 67 commits y el cierre de la revisión"
+```
+
+Para estudiar un bloque, usar `git show <hash>`; los commits agrupan cambios reales
+de responsabilidad o caso de uso. No se alteraron fechas ni autores anteriores,
+no se hicieron commits vacíos, squash, push ni merge.
 <!-- HISTORIAL_FIN -->
 
 ## C. Arquitectura actual y evolución de carpetas
@@ -511,6 +595,16 @@ no suma los mismos tests cada vez que se repitieron.
 | Comparación temporal de 125 fuentes contra `8fa68c1` | Tokens de código/tipos y emisión TypeScript sin comentarios idénticos. | Comparación sintáctica/compilada, no prueba formal de cada entorno de ejecución. |
 | `git diff --check 8fa68c1 HEAD` | Sin errores de whitespace en el código documentado. | No comprueba exactitud semántica de comentarios. |
 
+Una comprobación del árbol con `git diff --check` sin rango encontró el límite
+Windows `Filename too long` en dos PNG académicos previos. Se comprobó el diff
+completo y el estado final con `git -c core.longpaths=true`, sin cambiar configuración
+del repositorio. El rango `8fa68c1..HEAD` quedó sin errores de whitespace.
+
+Una comprobación del árbol con `git diff --check` sin rango encontró el límite
+Windows `Filename too long` en dos PNG académicos previos. Se comprobó el diff
+completo y el estado final con `git -c core.longpaths=true`, sin cambiar configuración
+del repositorio. El rango `8fa68c1..HEAD` quedó sin errores de whitespace.
+
 El primer `npm test` dentro del sandbox falló con **spawn EPERM** antes de ejecutar
 los 44 archivos de prueba backend. Se repitió con permiso para subprocesos locales
 y pasaron las suites. No se confundió ese bloqueo del runner con 44 errores nuevos
@@ -519,8 +613,8 @@ código 0 tras el último bloque de comentarios.
 
 La comparación de comentarios usó un script temporal con el parser TypeScript del
 frontend: recorrió tokens sintácticos omitiendo JSDoc y comparó `transpileModule`
-con `removeComments:true` antes/después. Se aplicó por bloque y se repitió sobre
-los 125 archivos en conjunto. No se agregó una suite que simplemente replique los
+con `removeComments:true` antes/después. Por bloque se comprobó la emisión;
+al final se compararon también tokens de código/tipos en los 125 archivos juntos. No se agregó una suite que simplemente replique los
 comentarios ni una nueva dependencia para esta comprobación.
 
 ### G.2. Lo que no se verificó
@@ -651,3 +745,11 @@ git for-each-ref --format="%(refname:short) %(objectname)" refs/heads
 locales previas conservaron sus puntas. Los cambios de fuente contienen comentarios;
 los demás archivos agregados pertenecen a `docs/`. El contador se refiere a los
 commits nuevos desde la base, no al historial anterior importado con subtree.
+
+
+Cierre comprobado: 67 commits locales nuevos; 125 fuentes con código/tipos intactos;
+solo TS/TSX comentados y tres Markdown en el diff. Los dos typechecks, build
+backend, suites backend/frontend y arquitectura finalizaron con código 0.
+La revisión de líneas agregadas no encontró patrones de claves privadas,
+tokens de proveedor o JWT; no se incluyeron archivos sensibles. Las puntas de
+las otras ramas locales se conservaron y el árbol queda limpio tras este commit.
