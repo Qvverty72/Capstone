@@ -1,3 +1,8 @@
+/**
+ * Coordinador de biblioteca: catálogo, detalle, formulario, adjuntos y descargas.
+ * Usa filtros con debounce y colas de archivos para reanudar cargas parciales;
+ * concentra varias responsabilidades, candidatas a hooks menores en una mejora futura.
+ */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { AuthApiError, apiFormErrorMessage } from '@/lib/api/authenticated-request';
@@ -9,6 +14,11 @@ import { saveDigitalFile } from '../api/saveDigitalFile';
 import type { DigitalAcademicCatalog, DigitalAttachment, DigitalFile, DigitalFilters, DigitalInput, DigitalPublication } from '../types/publication';
 import { publicationTextError } from '@/lib/validation/public-content';
 
+/**
+ * Expone estado y acciones consumidos por los componentes de biblioteca.
+ * Las refs conservan intención y recursos entre renders; los states representan
+ * lo que la pantalla muestra. Los permisos efectivos se comprueban en la API.
+ */
 export function useDigitalLibrary() {
   const auth = useAuth();
   const [items, setItems] = useState<DigitalPublication[]>([]), [detail, setDetail] = useState<DigitalPublication | null>(null);
@@ -83,6 +93,11 @@ export function useDigitalLibrary() {
     catch (reason) { if (mounted.current) showError(reason); }
     finally { picking.current = false; if (mounted.current) setPickingFile(false); }
   }
+/**
+ * Publica el primer PDF, conserva el ID confirmado y agrega el resto por orden.
+ * Una carga parcial mantiene el recurso destino y los archivos pendientes;
+ * al terminar relee su versión para no editar luego con updatedAt antiguo.
+ */
   async function publish() {
     if (saving.current || picking.current) return;
     const contentError = !currentTarget.current && publicationTextError(title, description);
