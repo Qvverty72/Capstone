@@ -1,8 +1,3 @@
-/**
- * Formulario académico separado de su componente visual.
- * Carga perfil/opciones en paralelo y conserva updatedAt como versión del servidor;
- * conflict bloquea otro guardado hasta recargar tras recibir HTTP 409.
- */
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { AuthApiError } from '@/lib/api/authenticated-request';
@@ -37,11 +32,6 @@ export function useAcademicProfile(onSaved?: () => void) {
     return () => abort.abort();
   }, [revision]);
   useEffect(() => () => pending.current?.abort(), []);
-/**
- * Envía los campos editables junto con la versión leída y refresca /me al guardar.
- * Cancelar la petición impide actualizar esta pantalla; no garantiza revertir una
- * escritura que el servidor ya haya confirmado.
- */
   async function save() {
     if (busy || !profile || conflict) return;
     if (!fullName.trim() || fullName.trim().length > 200 || /[\u0000-\u001f\u007f]/.test(fullName)) {

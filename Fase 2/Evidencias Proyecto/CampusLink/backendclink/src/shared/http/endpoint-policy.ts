@@ -1,8 +1,3 @@
-/**
- * Router con denegación por defecto para evitar endpoints nuevos sin política.
- * Reconoce la identidad del primer handler, no su nombre: envolver una política
- * en otra función no equivale a declararla para esta comprobación.
- */
 import { Router, type RequestHandler } from 'express';
 import { METHODS } from 'node:http';
 import { requireAuthentication, requireVerifiedIdentity } from '../../modules/auth/middleware/auth.middleware.js';

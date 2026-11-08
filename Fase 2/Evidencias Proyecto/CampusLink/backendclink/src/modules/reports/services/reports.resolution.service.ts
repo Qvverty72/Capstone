@@ -1,8 +1,3 @@
-/**
- * Resolución de denuncias con auditoría y medida de ocultamiento.
- * Las publicaciones relacionales comparten transacción SQL con la decisión;
- * las actividades requieren una decisión durable y un segundo paso hacia MongoDB.
- */
 import { withPostgresTransaction } from '../../../database/supabase/postgres.js';
 import { ApiError } from '../../../shared/errors/api-error.js';
 import type { VerifiedAuthConnection } from '../../auth/types/auth.types.js';
@@ -23,10 +18,6 @@ async function pendingReport(client: Parameters<typeof findReportReview>[0], cam
   return report;
 }
 
-/**
- * Impide sustituir una resolución en curso por otra justificación o medida.
- * El reintento debe coincidir con la intención persistida para completar el proceso.
- */
 function sameDecision(report: ReportReviewDetail, input: ReportResolutionInput) {
   if (report.resolution && (input.decision !== 'ACOGER' || report.resolution.measure !== 'OCULTAR'
     || !report.resolution.resolvedById || !Number.isFinite(Date.parse(report.resolution.resolvedAt))
@@ -68,11 +59,6 @@ export async function resolveReport(auth: VerifiedAuthConnection, rawCampusId: u
     await auditReportResolution(client, institutionId, before, after, input.decision === 'ACOGER' ? 'RESOLVER_DENUNCIA' : 'DESESTIMAR_DENUNCIA');
     return { activity: false as const, detail: { ...after, ...await readReportBackground(client, after), people: await readReportPeople(client, after) } };
   }, transaction);
-/**
- * El primer paso ya confirmó en SQL la intención de ocultar una actividad.
- * Si MongoDB o el cierre posterior fallan, sameDecision exige retomar esa decisión;
- * no se promete rollback distribuido del ocultamiento.
- */
   if (!result.activity) return result.detail;
   // La segunda transacción revalida permisos y serializa reintentos de la misma decisión.
   return authorizedReview(auth, campusId, async (client, institutionId) => {

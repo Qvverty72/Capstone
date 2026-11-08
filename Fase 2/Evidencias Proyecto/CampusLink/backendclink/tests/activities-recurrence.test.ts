@@ -40,19 +40,6 @@ const expand = (value: unknown) => expandActivityRecurrence(parsed(value), campu
 let previewActivitySeries: typeof import('../src/modules/activities/services/activities.series.service.js').previewActivitySeries;
 let createActivitySeries: typeof import('../src/modules/activities/services/activities.series.service.js').createActivitySeries;
 let getActivitySeries: typeof import('../src/modules/activities/services/activities.series.service.js').getActivitySeries;
-test('moderation covers series previews and publication before any occurrence is persisted', async () => {
-  let writes = 0;
-  const dependencies: ActivityDependencies = { now: () => now, getActiveMap: async () => map,
-    createSeries: async () => { writes++; throw new Error('Unexpected series write'); } };
-  for (const official of [false, true]) {
-    for (const title of ['actividad para i.d.i.o.t.a.s', 'Hi h!tler', 'Taller 😀']) {
-      const input = parsed({ ...body(), title });
-      await assert.rejects(previewActivitySeries(auth, input, dependencies, official), { status: 400 });
-      await assert.rejects(createActivitySeries(auth, { ...input, previewHash: 'a'.repeat(64) }, dependencies, official), { status: 400 });
-    }
-  }
-  assert.equal(writes, 0);
-});
 before(async () => {
   Object.assign(process.env, { NODE_ENV: 'test', MONGODB_URI: 'mongodb://localhost:27017', SUPABASE_URL: 'https://recurrence-test.invalid',
     SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test', SUPABASE_SECRET_KEY: 'server-test-key' });

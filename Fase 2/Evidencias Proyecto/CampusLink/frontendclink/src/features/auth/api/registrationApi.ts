@@ -35,8 +35,6 @@ async function registrationRequest<T>(endpoint: 'registration-options' | 'regist
     let code: string | undefined;
     try { code = (await response.json()).error?.code; } catch { /* La respuesta no expone un código legible. */ }
     throw new Error(response.status === 429 ? 'Espera antes de volver a solicitar el registro.'
-      : code === 'CONTENT_POLICY_ACCEPTANCE_REQUIRED' ? 'Debes aceptar el aviso de responsabilidad y las normas de uso para crear tu cuenta.'
-      : code === 'CONTENT_POLICY_VERSION_MISMATCH' ? 'Las normas de uso se actualizaron. Vuelve a abrir la aplicación para leerlas y aceptarlas.'
       : code === 'INVALID_INSTITUTIONAL_CAMPUS' ? 'Usa un correo admitido y un campus activo de su institución.'
       : code === 'INVALID_VERIFICATION' ? 'Revisa el código de verificación o solicita uno nuevo.'
       : code === 'REGISTRATION_REQUIRED' || code === 'ADMISSION_UNAVAILABLE' ? 'No se pudo completar el registro. Revisa con CampusLink la admisión de tu cuenta.'

@@ -1,8 +1,3 @@
-/**
- * Exportadores de instantáneas analíticas ya autorizadas por el servicio.
- * ExcelJS conserva tipos numéricos/vacíos; pdf-lib y fontkit generan documentos.
- * Este módulo interpreta la versión guardada y no consulta bases ni recalcula el tablero.
- */
 import ExcelJS from 'exceljs';
 import { PDFDocument, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
@@ -11,8 +6,6 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import type { AnalyticalReport, DashboardMetrics, DashboardPeriod } from '../types/analytics.types.js';
 import { REPORT_KPIS, REPORT_STATES, reportPeriodLabel, reportSavedLabel } from '../domain/analytics.presentation.js';
-import { ANALYSIS_DEFINITIONS } from '../domain/analytics.analysis.js';
-import { savedAnalysisTables } from './analytics.analysis.export.js';
 
 /** Interpretación histórica de la versión guardada; no consulta ni ejecuta el cálculo actual. */
 const definitions = {
@@ -32,9 +25,7 @@ function savedSections(report: AnalyticalReport): SavedSection[] {
 }
 
 function savedDefinitions(report: AnalyticalReport) {
-  const result = report.calculationVersion === 'campuslink-kpi-v2'
-    ? [...definitions['campuslink-kpi-v1'], ...(report.analysis?.definitions ?? ANALYSIS_DEFINITIONS).map((definition, index) => [`Análisis avanzado ${index + 1}`, definition])]
-    : definitions[report.calculationVersion];
+  const result = definitions[report.calculationVersion];
   if (!result) throw new Error('Unsupported saved calculation version.');
   return result;
 }
@@ -54,11 +45,6 @@ function metadata(report: AnalyticalReport): [string, string][] {
 }
 
 /** XLSX real: números y celdas vacías, sin fórmulas ni reconstrucción desde el PDF. */
-/**
- * Recibe el reporte persistido y devuelve bytes XLSX con metadatos, períodos y definiciones.
- * Las hojas separan resumen y detalle para evitar sumarlos dos veces; null permanece
- * vacío y no se convierte en un cero que afirme una observación inexistente.
- */
 export async function renderReportExcel(report: AnalyticalReport): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'CampusLink';
@@ -124,15 +110,6 @@ export async function renderReportExcel(report: AnalyticalReport): Promise<Buffe
   for (const [technical, human] of Object.entries(REPORT_STATES)) glossary.addRow([technical, human, report.calculationVersion]);
   const notes = sheet('Notas', ['Nota guardada'], report.notes.map(note => [note]));
   notes.getColumn(1).width = 120;
-  const analysisTables = savedAnalysisTables(report);
-  for (const table of analysisTables) {
-    const target = sheet(table.name, table.headers, table.rows);
-    target.getCell('A1').note = 'total = todo el rango; los demás IDs son intervalos. No sumar estos niveles ni personas únicas entre filas. Ver Definiciones.';
-    table.headers.forEach((header, index) => {
-      if (header.includes('(%)') || header === 'Solicitudes por 100 vistas') target.getColumn(index + 1).numFmt = '0.00';
-    });
-  }
-  if (analysisTables.length) guide.addRow(['Análisis avanzado', 'Participacion / Tipos actividad / Carrera actividad / Demanda carreras / Demanda asignaturas: filtrar Intervalo ID = total para todo el rango. Tasas en escala 0–100; vacío = denominador inexistente. Únicos no se suman entre filas. Consultar Definiciones para fórmulas y límites.']);
   // Altura según contenido y anchos conservados: wrapText solo no evita recorte en Excel.
   for (const target of workbook.worksheets) target.eachRow((row, index) => {
     if (index === 1) return;

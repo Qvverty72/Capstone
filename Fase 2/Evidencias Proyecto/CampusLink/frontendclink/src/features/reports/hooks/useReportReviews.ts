@@ -1,8 +1,3 @@
-/**
- * Coordinador de la revisión administrativa: filtros, casos, evidencia y decisión.
- * Cada resultado lleva clave de identidad/lista/detalle para no mostrar información
- * de un caso anterior; la resolución requiere una acción explícita y confirmación.
- */
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { canManageAccess } from '@/features/users/types/access';
@@ -95,10 +90,6 @@ export function useReportReviews() {
   const result = allowed && listing?.key === listKey ? listing : null;
   const currentDetail = allowed && detail?.key === detailKey ? detail : null;
   const deniedMessage = accessError?.key === identityKey ? accessError.message : '';
-/**
- * Una decisión durable EN_REVISION se retoma con su justificación original.
- * La UI evita editarla mientras el backend completa el paso pendiente hacia MongoDB.
- */
   const inProgress = currentDetail?.value?.status === 'EN_REVISION' && !!currentDetail.value.resolution;
   const input: ReportResolutionDraft = inProgress ? { decision: 'ACOGER', justification: currentDetail!.value!.resolution!.justification ?? '' }
     : draft?.key === detailKey ? draft.input : { decision: null, justification: '' };

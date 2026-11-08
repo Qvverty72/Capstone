@@ -1,8 +1,3 @@
-/**
- * Persistencia de auth: encapsula SDK Supabase y el bloqueo SQL del contexto.
- * Las lecturas de perfil/asignaciones usan el bearer del usuario y RLS; el alta
- * del perfil institucional usa el cliente del servidor tras autorizar en el servicio.
- */
 import { createPublicSupabaseClient, createServerSupabaseClient, createUserSupabaseClient, supabaseAuth } from '../../../database/supabase/client.js';
 import type { AuthAssignmentRow, AuthProfile } from '../types/auth.types.js';
 import { inspectDependencies } from '../../../database/health.js';
@@ -45,9 +40,7 @@ export async function insertInstitutionalProfile(profile: NewAuthProfile) {
 export async function signUpInstitutionalUser(input: RegistrationInput) {
   return createPublicSupabaseClient().auth.signUp({
     email: input.email, password: input.password,
-    // Constancia declarativa del registro; user_metadata es editable y no concede permisos.
-    options: { data: { nombre_completo: input.fullName, campus_id: input.campusId,
-      content_policy_version: input.contentPolicyVersion, content_policy_accepted_at: new Date().toISOString() } },
+    options: { data: { nombre_completo: input.fullName, campus_id: input.campusId } },
   });
 }
 
@@ -66,10 +59,6 @@ export async function requestPasswordRecovery(email: string) {
   return createPublicSupabaseClient().auth.resetPasswordForEmail(email);
 }
 
-/**
- * Crea un cliente aislado que retiene la sesión producida por el OTP recovery.
- * El servicio utiliza esa misma instancia para cambiar la contraseña y cerrarla.
- */
 export async function verifyPasswordRecovery(email: string, token: string) {
   const client = createPublicSupabaseClient();
   return { client, ...await client.auth.verifyOtp({ email, token, type: 'recovery' }) };
@@ -100,10 +89,6 @@ export async function findAuthProfile(accessToken: string, userId: string) {
     .eq('id', userId).maybeSingle<AuthProfile>();
 }
 
-/**
- * Proyecta solo concesiones no revocadas; el servicio transforma la relación
- * rol/campus en asignaciones y rechaza respuestas incompletas.
- */
 export async function findAuthRoles(accessToken: string, userId: string) {
   return createUserSupabaseClient(accessToken).from('usuario_rol')
     .select('campus_id,rol:rol_id(id,nombre)')

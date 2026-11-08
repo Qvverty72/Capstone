@@ -1,8 +1,3 @@
-/**
- * Expansión pura de series con Temporal y zona horaria IANA explícita.
- * Calcula días de calendario en vez de sumar milisegundos fijos: las transiciones
- * de horario de verano pueden cambiar la duración real entre dos fechas.
- */
 import { Temporal } from '@js-temporal/polyfill';
 import { createHash } from 'node:crypto';
 import { ApiError } from '../../../shared/errors/api-error.js';
@@ -17,15 +12,12 @@ export function expandActivityRecurrence(input: CreateActivitySeriesInput, campu
   const start = Temporal.Instant.from(input.startAt.toISOString()).toZonedDateTimeISO(rule.timeZone);
   const end = Temporal.Instant.from(input.endAt.toISOString()).toZonedDateTimeISO(rule.timeZone);
   const firstDate = start.toPlainDate(); const until = Temporal.PlainDate.from(rule.until);
-  if (Temporal.PlainDate.compare(until, firstDate) < 0) throw new ApiError(400, 'VALIDATION_ERROR', 'La fecha de «¿Hasta cuándo?» es anterior al inicio de la serie. Elige el mismo día de inicio o una fecha posterior.');
-  if (Temporal.PlainDate.compare(until, firstDate.add({ years: RECURRENCE_LIMITS.years })) > 0) throw new ApiError(400, 'VALIDATION_ERROR', 'La repetición supera el máximo de dos años desde el inicio de la serie. Acerca la fecha de «¿Hasta cuándo?» al inicio.');
+  if (Temporal.PlainDate.compare(until, firstDate) < 0 || Temporal.PlainDate.compare(until, firstDate.add({ years: RECURRENCE_LIMITS.years })) > 0) {
+    throw new ApiError(400, 'VALIDATION_ERROR', 'La fecha final debe estar entre el inicio y los próximos dos años.');
+  }
   const daySpan = firstDate.until(end.toPlainDate()).days;
   const occurrences: ActivityRecurrencePreview['occurrences'] = []; const skipped: ActivityRecurrencePreview['skipped'] = [];
   const exclusions = new Set(rule.excludedDates); const candidateDates = new Set<string>();
-/**
- * La política reject evita elegir silenciosamente una hora duplicada o inexistente.
- * El usuario debe corregir el horario o excluir la fecha que entra en conflicto.
- */
   const inZone = (date: Temporal.PlainDate, clock: Temporal.PlainTime) => date.toPlainDateTime(clock)
     .toZonedDateTime(rule.timeZone, { disambiguation: 'reject' });
   for (let period = 0; period <= 732; period++) {
@@ -55,18 +47,15 @@ export function expandActivityRecurrence(input: CreateActivitySeriesInput, campu
     } catch {
       throw new ApiError(400, 'VALIDATION_ERROR', `La hora del ${date.toString()} no existe o es ambigua en ${rule.timeZone}. Cambia la hora o excluye esa fecha.`);
     }
-    if (occurrenceEnd.epochMilliseconds <= occurrenceStart.epochMilliseconds) throw new ApiError(400, 'VALIDATION_ERROR', `La actividad del ${date.toString()} termina antes de su inicio o a la misma hora. Cambia la fecha u hora de término de la actividad base.`);
-    if (occurrenceEnd.epochMilliseconds <= now.getTime()) throw new ApiError(400, 'VALIDATION_ERROR', `La actividad del ${date.toString()} ya terminó. Cambia el inicio de la serie para que sus actividades aún estén vigentes al publicarlas.`);
+    if (occurrenceEnd.epochMilliseconds <= occurrenceStart.epochMilliseconds || occurrenceEnd.epochMilliseconds <= now.getTime()) {
+      throw new ApiError(400, 'VALIDATION_ERROR', `La ocurrencia del ${date.toString()} debe terminar después de su inicio y seguir vigente.`);
+    }
     occurrences.push({ index: occurrences.length + 1, startAt: new Date(occurrenceStart.epochMilliseconds).toISOString(),
       endAt: new Date(occurrenceEnd.epochMilliseconds).toISOString() });
     if (occurrences.length > RECURRENCE_LIMITS.occurrences) throw new ApiError(400, 'VALIDATION_ERROR', 'La serie admite hasta 200 ocurrencias. Reduce la vigencia o aumenta el intervalo.');
   }
-  if (!occurrences.length) throw new ApiError(400, 'VALIDATION_ERROR', 'La repetición no genera ninguna actividad. Amplía la fecha de «¿Hasta cuándo?», revisa los días seleccionados o quita alguna fecha a omitir.');
-  if (rule.excludedDates.some(date => !candidateDates.has(date))) throw new ApiError(400, 'VALIDATION_ERROR', 'Una fecha a omitir no coincide con los días de la repetición. Elimina esa fecha o ajusta la repetición para que la incluya.');
-/**
- * El hash cubre entrada y expansión completa, incluidas exclusiones y omisiones.
- * Permite confirmar que se publica la misma serie que se presentó en la vista previa.
- */
+  if (!occurrences.length) throw new ApiError(400, 'VALIDATION_ERROR', 'La regla debe generar al menos una ocurrencia no excluida.');
+  if (rule.excludedDates.some(date => !candidateDates.has(date))) throw new ApiError(400, 'VALIDATION_ERROR', 'Cada fecha excluida debe coincidir con un inicio de la regla.');
   const fingerprint = { campusId, type, title: input.title, description: input.description, startAt: input.startAt.toISOString(),
     endAt: input.endAt.toISOString(), location: input.location, recurrence: rule, occurrences, skipped };
   return { campusId, type, recurrence: rule, occurrences, skipped,

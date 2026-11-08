@@ -1,8 +1,3 @@
-/**
- * Estado del tablero con ámbito, fechas y agrupación; separa GET de consulta de
- * POST que guarda un reporte. El POST se dispara solo por la acción de generar,
- * para que volver a renderizar o cambiar un efecto no cree reportes adicionales.
- */
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { AuthApiError } from '@/lib/api/authenticated-request';
@@ -82,11 +77,6 @@ export function useAnalyticsDashboard(initialRange: { from: string; to: string }
       retireGeneration();
       setReportIdentity(null); setRange({ from, to, grouping }); setRevision(value => value + 1);
     },
-/**
- * Captura los filtros de esta intención y coordina catálogo + generación.
- * La ref busy impide duplicar el POST con pulsaciones concurrentes; abortar la espera
- * no demuestra que el servidor haya cancelado una instantánea ya guardada.
- */
     generateReport(from: string, to: string, grouping: DashboardGrouping) {
       if (!identity || !allowed || !filters?.campusIds.length) return;
       if (generation.current?.identity === identityKey && generation.current.busy && !generation.current.controller.signal.aborted) return;

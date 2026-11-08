@@ -1,8 +1,3 @@
-/**
- * Confirmación de edición sobre una instantánea MongoDB con writeConcern majority.
- * Versiona el documento, conserva before/after y deja un evento de notificación;
- * la entrega a SQL ocurre después mediante el worker, sin atomicidad entre motores.
- */
 import { ObjectId } from 'mongodb';
 import { getMongoDB as getMongoDb } from '../../../database/mongodb/client.js';
 import { mongoClient } from '../../../database/mongodb/client.js';
@@ -33,16 +28,12 @@ export async function commitActivityEdit(auth: VerifiedAuthConnection, activityI
     // Mantiene CSOT en la sesión; los helpers bulk del driver 7.6 podrían volver a pasar el timeout heredado.
     const transactionDb = mongoClient.db(db.databaseName, { ...db.options, timeoutMS: undefined });
     const transactionNow = new Date(Math.max(Date.now(), now.getTime()));
-/**
- * El callback usa mapa y actividad leídos con la misma sesión transaccional.
- * Si la revisión o el contenido cambiaron, el hash ya no coincide y se devuelve 409.
- */
     const plan = await previewActivityEdit(auth, activityId, input, { now: () => transactionNow,
       getActiveMap: campusId => transactionDb.collection<CampusMapDocument>('campus_maps').findOne({ campusId, status: 'ACTIVE' }, { session }),
       findEditable: (campusId, id) => transactionDb.collection<ActivityDocument>('activities').findOne({ campusId, _id: new ObjectId(id),
         status: { $in: ['ACTIVE', 'FINISHED'] }, visibility: 'PUBLIC', deletedAt: null }, { session }),
     });
-    if (plan.previewHash !== input.previewHash) throw new ApiError(409, 'CONFLICT', 'La actividad cambió mientras la editabas. Vuelve a la ficha y abre la edición nuevamente para revisar su estado actual.');
+    if (plan.previewHash !== input.previewHash) throw new ApiError(409, 'CONFLICT', 'Las actividades cambiaron. Revisa una nueva vista previa.');
     const changed = plan.changes.filter(value => value.changedFields.length);
     const reactivatingCommunity = !accountCapabilities(auth).officialActivities && changed.some(change =>
       change.before.type === 'COMMUNITY_ACTIVITY' && (change.before.status === 'FINISHED' || change.before.endAt <= transactionNow)

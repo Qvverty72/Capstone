@@ -14,40 +14,32 @@ function timestamp(value: unknown): Date | null {
 
 export const parseCreateActivity: RequestParser = (input: unknown): ValidationResult<CreateActivityInput> => {
   const issues: ApiErrorDetail[] = [];
-  if (!record(input)) return { success: false, issues: [{ field: 'body', message: 'No se recibieron los datos de la actividad. Completa el formulario e intenta enviarlo nuevamente.' }] };
+  if (!record(input)) return { success: false, issues: [{ field: 'body', message: 'An activity object is required.' }] };
   const allowed = ['title', 'description', 'startAt', 'endAt', 'location'];
-  for (const key of Object.keys(input)) if (!allowed.includes(key)) issues.push({ field: key, message: 'La solicitud contiene un campo de actividad no permitido. Publica desde el formulario sin agregar campos adicionales.' });
+  for (const key of Object.keys(input)) if (!allowed.includes(key)) issues.push({ field: key, message: 'Unsupported activity field.' });
   const text = (value: unknown, field: keyof typeof ACTIVITY_CONTENT_LIMITS, optional = false): string => {
     if (optional && value === undefined) return '';
     const result = typeof value === 'string' ? value.trim() : '';
-    const label = field === 'title' ? 'El nombre' : field === 'description' ? 'La descripción' : 'La referencia del lugar';
-    const path = field === 'customLabel' ? 'location.customLabel' : field;
     const controls = field === 'description' ? /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/ : /[\u0000-\u001F\u007F]/;
-    if (typeof value !== 'string') issues.push({ field: path, message: `${label} debe ser un texto. Completa ese campo del formulario.` });
-    else if (!result) issues.push({ field: path, message: `${label} no puede quedar en blanco ni contener solo espacios.${optional ? ' Escribe una referencia o deja de enviar este campo opcional.' : ' Completa ese campo antes de continuar.'}` });
-    else if (value.length > ACTIVITY_CONTENT_LIMITS[field]) issues.push({ field: path, message: `${label} tiene ${value.length} caracteres y el máximo es ${ACTIVITY_CONTENT_LIMITS[field]}. Acorta el texto para continuar.` });
-    else if (controls.test(value)) issues.push({ field: path, message: field !== 'description' && /[\r\n\t]/.test(value)
-      ? `${label} debe estar en una sola línea. Elimina los saltos de línea y las tabulaciones.`
-      : `${label} contiene caracteres invisibles no admitidos. Elimínalos o vuelve a escribir el texto.` });
+    if (!result || typeof value !== 'string' || value.length > ACTIVITY_CONTENT_LIMITS[field] || controls.test(value)) {
+      issues.push({ field, message: `Text between 1 and ${ACTIVITY_CONTENT_LIMITS[field]} characters is required.` });
+    }
     return result;
   };
   const title = text(input.title, 'title'); const description = text(input.description, 'description');
   const startAt = timestamp(input.startAt); const endAt = timestamp(input.endAt);
-  if (!startAt) issues.push({ field: 'startAt', message: 'La fecha u hora de inicio falta o no es válida. Vuelve a seleccionar ambas en el formulario.' });
-  if (!endAt) issues.push({ field: 'endAt', message: 'La fecha u hora de término falta o no es válida. Vuelve a seleccionar ambas en el formulario.' });
-  if (startAt && endAt && endAt <= startAt) issues.push({ field: 'endAt', message: 'La fecha y hora de término deben ser posteriores al inicio. Si termina al día siguiente, cambia también la fecha de término.' });
+  if (!startAt) issues.push({ field: 'startAt', message: 'A valid UTC ISO timestamp is required.' });
+  if (!endAt) issues.push({ field: 'endAt', message: 'A valid UTC ISO timestamp is required.' });
+  if (startAt && endAt && endAt <= startAt) issues.push({ field: 'endAt', message: 'End must be after start.' });
   const location = record(input.location) ? input.location : {};
-  if (!record(input.location)) issues.push({ field: 'location', message: 'Falta una ubicación válida. Selecciona un edificio y un piso de tu campus en el mapa.' });
+  if (!record(input.location)) issues.push({ field: 'location', message: 'A building and floor are required.' });
   for (const key of Object.keys(location)) if (!['buildingKey', 'floorKey', 'poiKey', 'customLabel'].includes(key)) {
-    issues.push({ field: `location.${key}`, message: 'La ubicación contiene un campo no permitido. Vuelve a seleccionarla desde el mapa.' });
+    issues.push({ field: `location.${key}`, message: 'Unsupported location field.' });
   }
   for (const key of ['buildingKey', 'floorKey', 'poiKey'] as const) {
     if (key === 'poiKey' && location[key] === undefined) continue;
     if (typeof location[key] !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(location[key] as string)) {
-      issues.push({ field: `location.${key}`, message: key === 'buildingKey'
-        ? 'Falta un edificio válido. Selecciona un edificio disponible de tu campus en el mapa.'
-        : key === 'floorKey' ? 'Falta un piso válido. Selecciona un piso del edificio elegido.'
-          : 'El punto de interés no es válido. Selecciona uno del piso elegido o deja este dato opcional sin seleccionar.' });
+      issues.push({ field: `location.${key}`, message: 'A valid domain location ID is required.' });
     }
   }
   const customLabel = text(location.customLabel, 'customLabel', true);

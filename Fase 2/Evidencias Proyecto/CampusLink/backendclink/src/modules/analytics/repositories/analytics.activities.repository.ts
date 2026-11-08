@@ -1,8 +1,6 @@
 import type { DashboardGrouping } from '../types/analytics.types.js';
 import type { AnalyticsWindow } from '../domain/analytics.periods.js';
 import { ANALYTICS_TIME_ZONE } from '../domain/analytics.periods.js';
-import { audiencePipeline } from './analytics.analysis.repository.js';
-import type { ActivityAudienceFact } from '../types/analytics.analysis.types.js';
 
 
 /**
@@ -13,7 +11,7 @@ interface ActivityCounts { viewed: number; joined: number; left: number; legacyE
 
 export function countActivityInteractions(campusId: string | string[], from: Date, until: Date, userIds?: string[]): Promise<ActivityCounts>;
 
-export function countActivityInteractions(campusId: string | string[], from: Date, until: Date, userIds: string[] | undefined, windows: AnalyticsWindow[], grouping: DashboardGrouping): Promise<ActivityCounts & { intervals: (ActivityCounts & { key: string })[]; audience: ActivityAudienceFact[] }>;
+export function countActivityInteractions(campusId: string | string[], from: Date, until: Date, userIds: string[] | undefined, windows: AnalyticsWindow[], grouping: DashboardGrouping): Promise<ActivityCounts & { intervals: (ActivityCounts & { key: string })[] }>;
 
 export async function countActivityInteractions(campusId: string | string[], from: Date, until: Date, userIds?: string[], windows?: AnalyticsWindow[], grouping: DashboardGrouping = 'month') {
   const campusIds = typeof campusId === 'string' ? [campusId] : campusId;
@@ -23,7 +21,7 @@ export async function countActivityInteractions(campusId: string | string[], fro
   const pipeline = [
     { $match: { campusId: typeof campusId === 'string' ? campusId : { $in: campusIds }, ...(userIds ? { userId: { $in: userIds } } : {}),
       occurredAt: { $gte: from, $lt: until }, type: { $in: ['VIEWED', 'JOINED', 'LEFT'] } } },
-    ...(windows ? [{ $facet: { total: [group], audience: audiencePipeline(grouping), periods: [{ $group: { ...group.$group,
+    ...(windows ? [{ $facet: { total: [group], periods: [{ $group: { ...group.$group,
       _id: { type: '$type', period: { $dateToString: { format: '%Y-%m-%d', timezone: ANALYTICS_TIME_ZONE,
         date: { $dateTrunc: { date: '$occurredAt', unit: grouping, timezone: ANALYTICS_TIME_ZONE, ...(grouping === 'week' ? { startOfWeek: 'monday' } : {}) } } } } },
     } }] } }] : [group]),
@@ -35,7 +33,7 @@ export async function countActivityInteractions(campusId: string | string[], fro
     joined: counts.find(row => row._id === 'JOINED')?.count ?? 0, left: counts.find(row => row._id === 'LEFT')?.count ?? 0,
     legacyEvents: counts.reduce((total, row) => total + row.legacy, 0) });
   if (!windows) return summarize(counts as Count[]);
-  const result = counts[0] as { total: Count[]; periods: PeriodCount[]; audience: ActivityAudienceFact[] } | undefined;
-  return { ...summarize(result?.total ?? []), audience: result?.audience ?? [], intervals: windows.map(window => ({ key: window.key,
+  const result = counts[0] as { total: Count[]; periods: PeriodCount[] } | undefined;
+  return { ...summarize(result?.total ?? []), intervals: windows.map(window => ({ key: window.key,
     ...summarize((result?.periods ?? []).filter(row => row._id.period === window.key).map(row => ({ ...row, _id: row._id.type }))) })) };
 }

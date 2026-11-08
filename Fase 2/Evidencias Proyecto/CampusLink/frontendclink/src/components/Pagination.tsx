@@ -1,8 +1,3 @@
-/**
- * Control de navegación reutilizable con total conocido o páginas visitadas por cursor.
- * Calcula cuántos botones caben según onLayout y emite onPageChange;
- * la consulta y el almacenamiento de cursores pertenecen al hook consumidor.
- */
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';

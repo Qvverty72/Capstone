@@ -1,8 +1,3 @@
-/**
- * Estado de apertura de la muestra textual de un PDF, sin descargar el original.
- * Cambiar publicación/archivo o cerrar cancela la lectura; result diferencia
- * una muestra no disponible de un error de comunicación.
- */
 import { useEffect, useRef, useState } from 'react';
 import { loadDigitalPreview, type DigitalPreviewResult } from '../api/elibraryApi';
 

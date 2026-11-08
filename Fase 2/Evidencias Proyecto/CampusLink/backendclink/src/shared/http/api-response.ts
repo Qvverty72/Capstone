@@ -1,8 +1,3 @@
-/**
- * Serialización común del protocolo HTTP, sin consultas ni reglas de negocio.
- * Los éxitos usan { data, meta? } y los errores { error }; health y las descargas
- * binarias tienen contratos propios en sus rutas y controladores.
- */
 import type { Response } from 'express';
 
 import type {

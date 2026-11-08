@@ -1,8 +1,3 @@
-/**
- * Adjuntos y originales privados: separa autorización SQL de transferencias Storage.
- * Compara huellas de bytes para detectar duplicados aunque cambie el nombre;
- * revalida la referencia tras el I/O para cubrir cambios concurrentes.
- */
 import { createHash, randomUUID } from 'node:crypto';
 import { notifyResourceUpdated } from '../../public.js';
 import type { PoolClient } from 'pg';
@@ -99,11 +94,6 @@ export function assertStoredDigitalFile(resource: DigitalResourceRow, file: Digi
     || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.pdf$/i.test(file.storage_path.slice(prefix.length))
     || file.mime_type !== 'application/pdf' || Number(file.tamano_bytes) <= 0 || Number(file.tamano_bytes) > DIGITAL_MAX_BYTES) throw notFound();
 }
-/**
- * Solo propietario o receptor con adquisición completada puede descargar.
- * Devuelve: Bytes y nombre del original tras comprobar derechos antes y después
- *  de Storage; nunca entrega un original basándose solo en su URL o ID.
- */
 export async function getDigitalOriginal(auth: VerifiedAuthConnection, publicationId: unknown, attachmentId: unknown) {
   authorizeDigitalAccess(auth); const id = digitalId(publicationId), fileId = digitalId(attachmentId, 'fileId');
   try {

@@ -1,8 +1,3 @@
-/**
- * Adaptador de consulta de mapas documentales y referencias relacionales.
- * CampusMapDocument enlaza ambos motores mediante campusId UUID; la coherencia
- * entre MongoDB y Supabase se comprueba en aplicación, sin foreign key entre motores.
- */
 import type { WithId } from 'mongodb';
 import { inspectDependencies } from '../../../database/health.js';
 import { probeSupabaseTables } from '../../../database/supabase/health.js';

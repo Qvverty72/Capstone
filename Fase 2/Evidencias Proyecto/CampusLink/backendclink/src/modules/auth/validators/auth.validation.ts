@@ -1,6 +1,5 @@
 import { ApiError } from '../../../shared/errors/api-error.js';
 import type { RegistrationInput } from '../types/auth.types.js';
-import { CONTENT_POLICY_VERSION } from '../domain/content-policy.js';
 
 
 /** Valida el cuerpo estricto de inicio o recuperación, normaliza email y limita el código OTP. */
@@ -25,14 +24,7 @@ export function registrationInput(body: unknown): RegistrationInput {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw invalid();
   const values = body as Record<string, unknown>;
   const keys = ['email', 'password', 'fullName', 'campusId'];
-  const allowedKeys = [...keys, 'acceptedContentPolicy', 'contentPolicyVersion'];
-  if (Object.keys(values).some(key => !allowedKeys.includes(key)) || keys.some(key => typeof values[key] !== 'string')) throw invalid();
-  if (values.acceptedContentPolicy !== true) {
-    throw new ApiError(400, 'CONTENT_POLICY_ACCEPTANCE_REQUIRED', 'Debes aceptar el aviso de responsabilidad y las normas de uso para crear tu cuenta.');
-  }
-  if (values.contentPolicyVersion !== CONTENT_POLICY_VERSION) {
-    throw new ApiError(400, 'CONTENT_POLICY_VERSION_MISMATCH', 'Las normas de uso se actualizaron. Vuelve a abrir la aplicación para leerlas y aceptarlas.');
-  }
+  if (Object.keys(values).some(key => !keys.includes(key)) || keys.some(key => typeof values[key] !== 'string')) throw invalid();
   const input = values as unknown as RegistrationInput;
   const email = input.email.trim().toLowerCase();
   const fullName = input.fullName.trim();
@@ -40,8 +32,7 @@ export function registrationInput(body: unknown): RegistrationInput {
     || !fullName || fullName.length > 200 || /[\u0000-\u001f\u007f]/.test(fullName)
     || !input.password || input.password.length > 4096
     || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.campusId)) throw invalid();
-  return { email, fullName, password: input.password, campusId: input.campusId.toLowerCase(),
-    acceptedContentPolicy: true, contentPolicyVersion: CONTENT_POLICY_VERSION };
+  return { email, fullName, password: input.password, campusId: input.campusId.toLowerCase() };
 }
 
 

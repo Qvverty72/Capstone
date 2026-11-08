@@ -1,8 +1,3 @@
-/**
- * Endpoints de perfil propio, resumen, bandeja y administración por campus.
- * La ruta declara autenticación; los servicios comprueban propiedad o administración.
- * Notificaciones delega en un router anidado y auditoría conserva subrutas por evidencia.
- */
 import { createPolicyRouter, publicEndpoint } from '../../shared/http/endpoint-policy.js';
 import type { Router } from 'express';
 import { getProfileOverviewController, getUsersHealthController } from './controllers/users.controller.js';

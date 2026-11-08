@@ -1,4 +1,3 @@
-import { publicContent } from './helpers/public-content.mjs';
 import { loadSafeArea } from './helpers/safe-area.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -12,7 +11,7 @@ function load(file, dependencies, globals = {}) {
   const source = fs.readFileSync(new URL('../src/features/marketplace/' + file, import.meta.url), 'utf8');
   const module = { exports: {} };
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-  vm.runInNewContext(code, { module, exports: module.exports, AbortController, ...globals, require(name) { if (name.endsWith('/lib/validation/public-content')) return publicContent;
+  vm.runInNewContext(code, { module, exports: module.exports, AbortController, ...globals, require(name) {
     if (name === '@/lib/layout/safeArea') return loadSafeArea(dependencies['react-native']?.Platform?.OS); assert.ok(Object.hasOwn(dependencies, name), `Unexpected dependency: ${name}`); return dependencies[name];
   } });
   return module.exports;
@@ -33,16 +32,14 @@ function runtime() {
     unmount() { slots.forEach(slot => slot?.cleanup?.()); }, timers,
   };
 }
-const { AuthApiError, apiFormErrorMessage } = load('../../lib/api/authenticated-request.ts', {
-  '@/features/auth/api/supabaseClient': { getSupabaseClient: () => null },
-});
+class AuthApiError extends Error {}
 const auth = { identity: { userId: 'owner', campusId: 'campus' }, refreshIdentity() {} };
 const emptyPhysicalgoodsFilters = { q: '', categoryId: '', modality: '', condition: '', careerId: '', subjectId: '', minPrice: '', maxPrice: '', mine: false };
 function fixture(kind,catalogActive=true) {
   const h = runtime(), calls = [], details = [],optionReads=[];
   const { useDebouncedValue } = load('hooks/useDebouncedValue.ts', { react: h.react }, h.globals);
   const shared = { react: h.react, '@/features/auth/hooks/useAuth': { useAuth: () => auth },
-    '@/lib/api/authenticated-request': { AuthApiError, apiFormErrorMessage }, '../../api/resourceInteractions': { recordResourceOpening() {} },
+    '@/lib/api/authenticated-request': { AuthApiError }, '../../api/resourceInteractions': { recordResourceOpening() {} },
     '../../hooks/useDebouncedValue': { useDebouncedValue } };
   const capture = (filters, page, signal) => new Promise((resolve, reject) => calls.push({ filters, page, signal, resolve, reject }));
   let hook;
@@ -105,23 +102,6 @@ test('physical: background authorization loss and removed detail clear stale dat
   if(status===404){assert.match(state.galleryError,/operación/);f.calls.at(-1).resolve({data:[],meta:{hasMore:false}});await setImmediate();f.render();}
   assert.equal(f.h.timers.size,0);f.h.unmount();
  }
-});
-
-test('physical: moderation details survive the mutation refresh and a corrected retry clears them', async () => {
-  const f = fixture('physical'); let state = f.render();
-  f.calls[0].resolve({ data: [], meta: { hasMore: false } }); await setImmediate(); state = f.render();
-  state.open('resource'); f.render();
-  const gallery = { id: 'resource', title: 'Material académico', category: { id: 'books' }, images: [], canEdit: true };
-  f.details[0].resolve(gallery); await setImmediate(); state = f.render();
-  await state.change(async () => { throw new AuthApiError(400, 'Contenido rechazado', 'VALIDATION_ERROR', [
-    { field: 'title', message: 'El título contiene «idi0tas». Corrígelo.' },
-    { field: 'description', message: 'La descripción contiene «weá». Corrígela.' },
-  ]); });
-  state = f.render(); assert.match(state.galleryError, /idi0tas/); assert.match(state.galleryError, /weá/);
-  f.details.at(-1).resolve(gallery); f.calls.at(-1).resolve({ data: [], meta: { hasMore: false } });
-  await setImmediate(); state = f.render(); assert.match(state.galleryError, /idi0tas/); assert.equal(state.gallery.canEdit, true);
-  await state.change(async () => {}); state = f.render(); assert.equal(state.galleryError, null);
-  f.h.unmount();
 });
 
 for (const kind of ['physical', 'digital']) {

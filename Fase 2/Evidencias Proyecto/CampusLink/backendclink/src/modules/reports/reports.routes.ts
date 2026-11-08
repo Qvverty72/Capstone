@@ -1,8 +1,3 @@
-/**
- * Rutas de denuncias separadas entre envío/acuse propio y revisión administrativa.
- * Los recursos físicos/digitales y actividades conservan validadores y servicios
- * específicos; compartir autenticación no implica compartir autorización de negocio.
- */
 import { createPolicyRouter, publicEndpoint } from '../../shared/http/endpoint-policy.js';
 import type { Router } from 'express';
 import { getReportsHealthController, getOwnActivityReportController, createActivityReportController, createPhysicalgoodsReportController } from './controllers/reports.controller.js';

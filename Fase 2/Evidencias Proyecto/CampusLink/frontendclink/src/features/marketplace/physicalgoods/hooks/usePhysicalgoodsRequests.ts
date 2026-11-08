@@ -1,8 +1,3 @@
-/**
- * Listado de solicitudes enviadas/recibidas con confirmación de decisiones.
- * Después de un envío vuelve a leer el estado para conciliar un acuse perdido;
- * conserva feedback separado de loading, selección y error.
- */
 import { useCallback,useEffect,useRef,useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { AuthApiError } from '@/lib/api/authenticated-request';

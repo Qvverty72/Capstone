@@ -1,8 +1,3 @@
-/**
- * Tarjeta de resumen que revalida ficha y participación mediante useActivityDetail.
- * Usa el dato de lista mientras carga; un error retira contenido público anterior y
- * puede conservar el acceso a participación propia. onPress abre el detalle.
- */
 import { APP_COLORS } from '@/types/colors';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Repeat2 } from 'lucide-react-native';
@@ -12,11 +7,6 @@ import { ActivityParticipantCount } from './ActivityParticipantCount';
 import { ActivityDescription } from './ActivityDescription';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 
-/**
- * Recibe una actividad del listado y un callback de navegación/apertura.
- * Muestra resumen, fechas y contador; cada tarjeta monta una consulta de ficha,
- * por lo que el costo del listado crece con el número de tarjetas visibles.
- */
 export function ActivityCard({ activity, onPress }: {
   activity: Activity; onPress: () => void;
 }) {

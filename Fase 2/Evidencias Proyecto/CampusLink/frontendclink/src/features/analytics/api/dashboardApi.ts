@@ -1,8 +1,3 @@
-/**
- * Transporte de tablero y reportes: serializa filtros sin calcular indicadores.
- * Comparte la construcción de filtros entre GET del tablero y POST de generación;
- * las lecturas históricas usan cursor y el ID del snapshot guardado.
- */
 import { authenticatedEnvelopeRequest } from '@/lib/api/authenticated-request';
 import type { AnalyticalReport, DashboardData, DashboardFilters, DashboardGrouping, DashboardOptions, HistoricalReportsFilters, HistoricalReportsPage } from '../types/dashboard';
 

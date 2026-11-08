@@ -1,8 +1,3 @@
-/**
- * GET del mapa activo con pipeline explícito: autenticación, UUID de campus,
- * controlador y servicio autorizado. El lookup opcional facilita comprobar todo
- * el recorrido HTTP sin abrir una conexión MongoDB real.
- */
 import { createPolicyRouter, publicEndpoint } from '../../shared/http/endpoint-policy.js';
 import type { Router } from 'express';
 import { validateRequest } from '../../shared/http/validate-request.js';

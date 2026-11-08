@@ -11,7 +11,7 @@ export function DigitalPublicationForm({ library }: { library: ReturnType<typeof
   return <View style={f.form}>
     <Text style={f.hint}>{library.attachMode ? 'Añade material a tu publicación.' : library.target ? 'Tu recurso está guardado. Completa los archivos pendientes.' : 'Los campos con * son obligatorios.'}</Text>
     {!library.attachMode && <>
-      <PublicationSection number="1" title="Datos del recurso" content={{ title: library.title, description: library.description }}>
+      <PublicationSection number="1" title="Datos del recurso">
         <View style={f.field}><Text style={f.label}>Nombre del recurso *</Text>
           <TextInput accessibilityLabel="Título" value={library.title} onChangeText={library.setTitle} maxLength={200} editable={!locked} placeholder="Ej. Guía de cálculo integral" style={f.input} /></View>
         <View style={f.field}><Text style={f.label}>Descripción *</Text>

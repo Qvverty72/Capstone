@@ -1,8 +1,3 @@
-/**
- * Adaptador final de bytes descargados a guardado web o compartir nativo.
- * En web crea un enlace blob temporal; en nativo espera la escritura en caché antes
- * de compartir y retira el temporal en finally. No solicita credenciales ni URLs de Storage.
- */
 import { Platform } from 'react-native';
 import { File as LocalFile, Paths } from 'expo-file-system';
 import { isAvailableAsync, shareAsync } from 'expo-sharing';
@@ -16,11 +11,6 @@ export interface DownloadFile {
 }
 
 /** Guarda bytes ya autorizados. El archivo temporal nativo se retira al cerrar compartir. */
-/**
- * Recibe bytes ya autorizados y metadatos de presentación/extensión/MIME.
- * Devuelve: Promesa de finalización del flujo local; compartir no permite comprobar
- * si la persona guardó finalmente el archivo en otra aplicación.
- */
 export async function saveFile(blob: Blob, file: DownloadFile, signal?: AbortSignal) {
   if (signal?.aborted) return;
   if (Platform.OS === 'web') {

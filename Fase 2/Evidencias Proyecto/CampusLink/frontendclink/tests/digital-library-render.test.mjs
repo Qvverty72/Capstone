@@ -1,4 +1,3 @@
-import { publicContent } from './helpers/public-content.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
@@ -50,7 +49,6 @@ function renderForm(progress, error = null) {
   function load(filename, code) {
     const module = { exports: {} };
     vm.runInNewContext(code ?? ts.transpileModule(fs.readFileSync(filename, 'utf8'), { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, { module, exports: module.exports, require: name => {
-      if (name.endsWith('/lib/validation/public-content')) return publicContent;
       if (Object.hasOwn(mocks, name)) return mocks[name];
       const base = path.resolve(path.dirname(filename), name);
       const file = [base + '.tsx', base + '.ts'].find(file => fs.existsSync(file));

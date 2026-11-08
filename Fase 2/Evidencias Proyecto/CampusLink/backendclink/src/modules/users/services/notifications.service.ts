@@ -1,8 +1,3 @@
-/**
- * Caso de uso de la bandeja propia: listado, contador, lectura, retiro y detalle
- * de cambios de actividad. El repositorio siempre recibe usuario y campus;
- * conocer un ID de notificación ajena no habilita acceso.
- */
 import type { PoolClient } from 'pg';
 import type { VerifiedAuthConnection } from '../../auth/types/auth.types.js';
 import { requireCampusCapability } from '../../auth/domain/auth.authorization.js';
@@ -12,13 +7,6 @@ import { countOwnUnreadNotifications, findOwnActivityChange, listOwnNotification
 import { getNotificationActivityChange } from './notifications.activity-change.js';
 import type { ActivityDependencies } from '../../activities/public.js';
 
-/**
- * Revalida la cuenta dentro de SQL antes de seleccionar una operación.
- * Los flags del input determinan si cuenta, lista, consulta referencia o actualiza.
- * Parámetro: auth Contexto autenticado del propietario de la bandeja.
- * Parámetro: transaction Frontera sustituible por pruebas; por defecto usa pg.
- * Devuelve: DTO de la operación; 404 oculta notificaciones fuera del alcance propio.
- */
 export async function ownNotificationOperation(auth: VerifiedAuthConnection,
   input: { cursor?: string; id?: string; remove?: boolean; countOnly?: boolean; activityChange?: boolean },
   transaction = withPostgresTransaction, activityDependencies: ActivityDependencies = {}) {
