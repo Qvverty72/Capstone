@@ -1,3 +1,8 @@
+/**
+ * Casos de lectura del mapa: Supabase valida la referencia al campus y MongoDB
+ * entrega el documento espacial. ActiveMapLookup permite inyectar esa consulta
+ * sin cambiar la política que limita el mapa al campus vigente.
+ */
 import { createModuleHealthCheck } from '../../../shared/health/module-health.js';
 import type { DependencyChecks } from '../../../shared/health/health.types.js';
 import type { CampusMapDocument, MapHealth } from '../types/map.types.js';
@@ -24,6 +29,11 @@ export async function getActiveMap(campusId: string) {
   return findActiveMapByCampusId(campusId);
 }
 
+/**
+ * Comprueba campus del perfil y capacidad general antes de ejecutar lookup.
+ * Valida también campus/status del resultado para no confiar solo en el parámetro.
+ * @returns Mapa ACTIVE autorizado; lanza 403 por alcance o 404 si no está publicado.
+ */
 export async function getAuthorizedActiveMap(auth: VerifiedAuthConnection, campusId: string, lookup: ActiveMapLookup = getActiveMap) {
   // La consulta sigue el campus actual del perfil, incluso si el usuario se cambió de campus.
   if (campusId.toLowerCase() !== auth.campusId || auth.profile.campus_id !== auth.campusId) {
