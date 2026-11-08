@@ -1,3 +1,8 @@
+/**
+ * Consulta paginada del historial administrativo con filtros de campus, acción,
+ * fechas y nombres. Espera la recarga de campus permitidos antes de pedir eventos;
+ * la autorización y la mezcla SQL/Mongo pertenecen al backend.
+ */
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { AuthApiError } from '@/lib/api/authenticated-request';
@@ -71,6 +76,10 @@ export function useAuditHistory() {
     return () => controller.abort();
   }, [campusId,page,action,dates,search,campusesReady,campusLoadVersion]);
   useEffect(() => () => pending.current?.abort(), []);
+/**
+ * Cancela la lectura anterior antes de abrir un detalle y solo aplica la respuesta
+ * si su señal sigue vigente; evita sustituir una selección nueva por una respuesta tardía.
+ */
   async function select(id: string) {
     pending.current?.abort(); const controller = new AbortController(); pending.current = controller;
     setSelected(null); setError(''); setLoading(true);
