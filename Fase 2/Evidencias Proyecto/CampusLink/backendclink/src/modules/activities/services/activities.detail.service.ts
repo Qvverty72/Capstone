@@ -1,3 +1,8 @@
+/**
+ * Casos de uso de ficha, vistas y participación propia.
+ * La lectura visible exige mapa y creador vigentes; consultar/retirar la participación
+ * propia tiene un recorrido separado para permitirlo tras desaparecer la actividad.
+ */
 import type { VerifiedAuthConnection } from '../../auth/types/auth.types.js';
 import { getAuthorizedActiveMap } from '../../maps/public.js';
 import { ApiError } from '../../../shared/errors/api-error.js';
@@ -58,6 +63,11 @@ export async function getActivityDetail(auth: VerifiedAuthConnection, activityId
 }
 
 /** Inscribe al usuario si corresponde y vuelve a leer el detalle para devolver el estado confirmado. */
+/**
+ * La inscripción no devuelve un estado optimista: tras persistir vuelve a consultar.
+ * El operationId opcional identifica el intento para que el repositorio deduplique.
+ * @returns Ficha con la participación confirmada por los lectores del servidor.
+ */
 export async function joinActivity(auth: VerifiedAuthConnection, activityId: string,
   dependencies: ActivityDependencies = {}, operationId?: string): Promise<ActivityDetailDto> {
   const detail = await getActivityDetail(auth, activityId, dependencies);
