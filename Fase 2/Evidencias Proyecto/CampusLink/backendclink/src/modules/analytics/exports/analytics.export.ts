@@ -1,3 +1,8 @@
+/**
+ * Exportadores de instantáneas analíticas ya autorizadas por el servicio.
+ * ExcelJS conserva tipos numéricos/vacíos; pdf-lib y fontkit generan documentos.
+ * Este módulo interpreta la versión guardada y no consulta bases ni recalcula el tablero.
+ */
 import ExcelJS from 'exceljs';
 import { PDFDocument, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
@@ -49,6 +54,11 @@ function metadata(report: AnalyticalReport): [string, string][] {
 }
 
 /** XLSX real: números y celdas vacías, sin fórmulas ni reconstrucción desde el PDF. */
+/**
+ * Recibe el reporte persistido y devuelve bytes XLSX con metadatos, períodos y definiciones.
+ * Las hojas separan resumen y detalle para evitar sumarlos dos veces; null permanece
+ * vacío y no se convierte en un cero que afirme una observación inexistente.
+ */
 export async function renderReportExcel(report: AnalyticalReport): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'CampusLink';
