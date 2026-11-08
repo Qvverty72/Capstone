@@ -218,6 +218,10 @@ export function CameraController({ gestureState }: CameraControllerProps) {
       if (!isFloorModalOpen) {
         ndcVec.current.set(gs.tapX, gs.tapY);
         raycaster.current.setFromCamera(ndcVec.current, camera);
+/**
+ * El recorrido recursivo permite seleccionar submeshes dentro de los grupos del GLB.
+ * Solo los marcados isFloor participan; FloorGroup crea ese contrato en userData.
+ */
         const intersects = raycaster.current.intersectObjects(scene.children, true);
 
         // Busca la primera intersección marcada como piso interactivo.
