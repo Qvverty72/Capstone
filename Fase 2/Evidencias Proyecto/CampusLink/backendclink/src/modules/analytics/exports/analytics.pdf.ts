@@ -1,3 +1,8 @@
+/**
+ * Maquetación PDF de la instantánea guardada con fuente Unicode embebida.
+ * Ajusta texto y saltos de página sin alterar cifras; los caracteres no soportados
+ * se representan por código Unicode para no perder silenciosamente información.
+ */
 import { PDFDocument, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { readFile } from 'node:fs/promises';
@@ -8,6 +13,11 @@ import type { SavedSection } from './analytics.export.js';
 import { REPORT_KPIS, REPORT_STATES, reportPeriodLabel, reportSavedLabel } from '../domain/analytics.presentation.js';
 
 /** Maquetación únicamente: todas las cifras y metadatos llegan de la instantánea original. */
+/**
+ * Transforma reporte, metadatos, secciones y glosario en un Buffer PDF.
+ * Los datos llegan preparados por el exportador: esta función solo distribuye
+ * contenido y conserva fecha/autor originales del reporte.
+ */
 export async function renderSavedReportPdf(report: AnalyticalReport, metadata: [string, string][], sections: SavedSection[], glossary: string[][]): Promise<Buffer> {
   const pdf = await PDFDocument.create();
   pdf.setTitle('Reporte analítico CampusLink'); pdf.setAuthor(report.generatedBy.name);

@@ -1,3 +1,8 @@
+/**
+ * Preparación de publicaciones comunitarias/oficiales sin acoplarse a Express.
+ * Coordina fechas, capacidades y ubicación a partir de la entrada parseada por la ruta;
+ * el repositorio repite las comprobaciones de persistencia al confirmar la operación.
+ */
 import { ObjectId } from 'mongodb';
 import { ApiError } from '../../../shared/errors/api-error.js';
 import type { VerifiedAuthConnection } from '../../auth/types/auth.types.js';
@@ -36,6 +41,11 @@ export async function createOfficialEvent(auth: VerifiedAuthConnection, input: C
 }
 
 /** Prepara un documento común a actividades únicas y series, verificando cuenta, permiso y ubicación. */
+/**
+ * Recibe entrada ya parseada y el tipo elegido por el endpoint autorizado.
+ * Devuelve: Documento Mongo aún no persistido, con creador como primer participante.
+ * La validación en memoria no sustituye el control de cupo dentro de la transacción.
+ */
 export async function prepareActivityDocument(auth: VerifiedAuthConnection, input: CreateActivityInput, type: ActivityType,
   dependencies: ActivityDependencies): Promise<ActivityDocument> {
   if (auth.profile.campus_id !== auth.campusId || (type === 'COMMUNITY_ACTIVITY' && !auth.profile.verificado_en)) {

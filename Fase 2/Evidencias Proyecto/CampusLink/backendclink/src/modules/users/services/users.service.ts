@@ -1,3 +1,8 @@
+/**
+ * Aplicación del perfil académico propio: filtra DTO, valida entradas y coordina
+ * la edición con bloqueo y versión optimista. El estado y las concesiones se
+ * releen dentro de la transacción para autorizar sobre datos vigentes.
+ */
 import { createModuleHealthCheck } from '../../../shared/health/module-health.js';
 import { probeUsersDependencies } from '../repositories/users.repository.js';
 import type { UsersHealth } from '../types/users.types.js';
@@ -77,6 +82,10 @@ export async function updateAcademicProfile(auth: VerifiedAuthConnection, body: 
     const current = { ...auth, roles, campusId: profile.campus_id, profile: { ...auth.profile, ...profile } };
     requireResourceOwner(current, profile.id);
     authorize(current);
+    /**
+     * El updatedAt recibido funciona como versión optimista: una edición concurrente
+     * produce 409 y exige recargar, en vez de sobrescribir información nueva.
+     */
     if (!profile.version_matches) throw new ApiError(409, 'CONFLICT', 'El perfil cambió. Recárgalo antes de guardar.');
     const campus = await repository.lockCampus(input.campusId);
     if (!campus?.activo || campus.institucion_id !== profile.institucion_id) throw invalid('El campus debe estar activo y pertenecer a tu institución.');

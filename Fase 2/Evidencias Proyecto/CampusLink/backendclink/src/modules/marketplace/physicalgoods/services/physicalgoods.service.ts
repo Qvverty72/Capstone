@@ -1,3 +1,8 @@
+/**
+ * Publicación de recursos físicos con precio en CLP, catálogo del campus y foto.
+ * Coordina Storage antes de SQL y conserva auditoría dentro de la transacción;
+ * la compensación de archivos no equivale a atomicidad entre ambos servicios.
+ */
 import { createModuleHealthCheck } from '../../../../shared/health/module-health.js';
 import { probePhysicalgoodsDependencies } from '../repositories/physicalgoods.repository.js';
 import type { PhysicalgoodsHealth } from '../types/physicalgoods.types.js';
@@ -46,6 +51,10 @@ export async function createPhysicalgoods(auth: VerifiedAuthConnection, body: un
   let attemptedPersistence = false;
   try {
     await uploadPrincipalPhoto(path, photo);
+    /**
+     * A partir de este punto un fallo puede ser ambiguo: COMMIT podría haberse aplicado.
+     * Antes de limpiar Storage se consulta la referencia SQL para conservar archivos válidos.
+     */
     attemptedPersistence = true;
     return await withPhysicalgoodsTransaction(async client => {
       const { profile, roles } = await lockPhysicalgoodsPublisher(client, auth.userId);
@@ -76,6 +85,10 @@ export async function createPhysicalgoods(auth: VerifiedAuthConnection, body: un
 }
 
 /** Genera un enlace firmado de corta duración tras comprobar campus y referencia privada. */
+/**
+ * Devuelve una URL firmada por 60 segundos tras verificar publicación y campus.
+ * Una firma concede acceso temporal a esos bytes; no elimina la autorización previa.
+ */
 export async function getPhysicalgoodsPhoto(auth: VerifiedAuthConnection, publicationId: unknown) {
   requireCampusCapability(auth, auth.campusId, 'general');
   const id = physicalgoodsId(publicationId, 'publicationId');

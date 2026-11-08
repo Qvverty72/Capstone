@@ -1,3 +1,8 @@
+/**
+ * Acuerdos físicos: coordinación, confirmaciones, cancelación y valoración.
+ * Solo participan propietario/receptor; las consultas históricas pueden conservar
+ * un campus anterior, mientras las acciones exigen el contexto operativo vigente.
+ */
 import type { PoolClient } from 'pg';
 import { assertMarketplaceRatingEligible } from '../../domain/marketplace.rating.js';
 import { ApiError } from '../../../../shared/errors/api-error.js';
@@ -70,6 +75,10 @@ export async function transitionPhysicalgoodsTransaction(auth: VerifiedAuthConne
       if (!confirmations.some(row=>row.usuario_id===current.userId&&row.rol_confirmante===role)) {
         confirmations.push(await insertPhysicalgoodsConfirmation(client,selected,current.userId,role));
       }
+      /**
+       * Completar requiere las dos confirmaciones con sus roles correctos.
+       * El acuerdo registra una entrega declarada por las partes; no procesa pagos.
+       */
       const both=confirmations.some(row=>row.usuario_id===transaction.propietario_id&&row.rol_confirmante==='PROPIETARIO')
         &&confirmations.some(row=>row.usuario_id===transaction.receptor_id&&row.rol_confirmante==='RECEPTOR');
       status=both?'COMPLETADA':'PENDIENTE_CONFIRMACION';

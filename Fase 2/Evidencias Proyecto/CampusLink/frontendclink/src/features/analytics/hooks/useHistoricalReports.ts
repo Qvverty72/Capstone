@@ -1,3 +1,8 @@
+/**
+ * Lectura de snapshots guardados con cursor y comparación de hasta dos reportes.
+ * El catálogo actual es opcional porque un reporte puede conservar ámbitos retirados.
+ * Reabrir consulta la API: no reutiliza cifras privadas de una identidad anterior.
+ */
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { AuthApiError } from '@/lib/api/authenticated-request';

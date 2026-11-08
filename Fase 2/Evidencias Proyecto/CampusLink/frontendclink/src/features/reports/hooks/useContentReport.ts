@@ -1,3 +1,8 @@
+/**
+ * Formulario compartido de denuncia para actividades, publicaciones y transacciones.
+ * Aísla estado por identidad/campus/objetivo y consulta el acuse previo donde existe
+ * ese endpoint; los reintentos de transacciones no tienen la misma deduplicación.
+ */
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { AuthApiError } from '@/lib/api/authenticated-request';
@@ -11,6 +16,10 @@ export function useContentReport(target:ContentReportTarget) {
   const campusId = identity?.campusId;
   const activityId = target.type === 'ACTIVIDAD' ? target.activityId : null;
   const publicationTarget=target.type==='PUBLICACION_FISICA'||target.type==='PUBLICACION_DIGITAL'?target:null;
+  /**
+   * Solo actividades y publicaciones consultan una denuncia previa antes del envío.
+   * Para una transacción no se promete recuperar un acuse único tras una respuesta perdida.
+   */
   const lookupNeeded=activityId!==null||publicationTarget!==null;
   const hasSession = Boolean(session);
   const key = JSON.stringify([identity?.userId, campusId, target]);

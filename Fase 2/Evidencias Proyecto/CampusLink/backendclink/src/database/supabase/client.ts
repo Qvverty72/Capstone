@@ -1,3 +1,8 @@
+/**
+ * Fábricas del SDK Supabase para separar sondas, Auth y acceso a datos.
+ * Todas usan fetch con timeout; ningún cliente de servidor persiste ni renueva
+ * sesiones automáticamente. Las claves se obtienen del entorno validado.
+ */
 import { createClient } from '@supabase/supabase-js';
 import { env } from '../../config/env.js';
 
@@ -26,10 +31,20 @@ export const supabaseTechnical = createClient(
 export const supabaseAuth = createClient(env.supabaseUrl, env.supabasePublishableKey, options);
 
 // El registro puede crear una sesión; se aísla de clientes compartidos y otras solicitudes.
+/**
+ * Entrega una instancia pública nueva para operaciones que pueden crear sesión.
+ * El aislamiento evita mezclar el estado de un registro con otra petición HTTP.
+ * Devuelve: Cliente con clave pública y sin persistencia de sesión.
+ */
 export function createPublicSupabaseClient() {
   return createClient(env.supabaseUrl, env.supabasePublishableKey, options);
 }
 // Persistencia propiedad del servidor: no recurre a permisos públicos ni inicia sesiones de usuario.
+/**
+ * Construye el cliente técnico para operaciones exclusivas del backend.
+ * Falla si falta la clave de servidor; el servicio debe autorizar el caso de uso
+ * antes de delegar a esta persistencia con privilegios elevados.
+ */
 export function createServerSupabaseClient() {
   if (!env.supabaseSecretKey) throw new Error('A server Supabase key is required');
   return createClient(env.supabaseUrl, env.supabaseSecretKey, options);

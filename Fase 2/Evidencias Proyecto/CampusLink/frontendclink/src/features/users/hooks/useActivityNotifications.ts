@@ -1,3 +1,8 @@
+/**
+ * Bandeja React con recarga al ganar foco y cursor proporcionado por la API.
+ * Controla paneles de actividad/recurso y espera el acuse antes de marcar o retirar.
+ * Los errores de autorización solicitan revalidar la identidad compartida.
+ */
 import { useCallback,useRef,useState } from 'react';
 import {useFocusEffect} from 'expo-router';
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -24,6 +29,10 @@ export function useActivityNotifications(onChanged?: () => void) {
         : 'No se pudo confirmar la operación. Actualiza las notificaciones.');
     if (reason instanceof AuthApiError && [401, 403].includes(reason.status)) refreshIdentity();
   };
+  /**
+   * Sin cursor reemplaza la primera página; con cursor agrega filas sin duplicar IDs.
+   * La referencia pending serializa consultas/mutaciones para no mezclar páginas y acuses.
+   */
   async function load(next?: string) {
     if (pending.current || !mounted.current) return;
     const abort = new AbortController(); pending.current = abort; setBusy(true); setError(null);
@@ -45,6 +54,10 @@ export function useActivityNotifications(onChanged?: () => void) {
       setActivityId(null);setPublicationId(null);setResourceNotification(null);
     };
   }, []));
+  /**
+   * Tras confirmar en API actualiza la fila local y avisa al contador externo.
+   * Si es lectura abre el destino según el tipo; una retirada solo elimina de la bandeja.
+   */
   async function update(item: UserNotification, remove: boolean) {
     if (pending.current || !mounted.current) return;
     const abort = new AbortController(); pending.current = abort; setBusy(true); setError(null);

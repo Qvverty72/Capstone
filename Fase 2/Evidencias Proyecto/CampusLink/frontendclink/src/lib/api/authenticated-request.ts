@@ -1,3 +1,8 @@
+/**
+ * Transporte común de features hacia la API: centraliza bearer, límites de ruta
+ * y errores HTTP. authenticatedRequest devuelve data; la variante Envelope conserva
+ * meta y Response permite consumir binarios. Los tipos genéricos no validan JSON.
+ */
 import { getSupabaseClient } from '@/features/auth/api/supabaseClient';
 
 /** Error de cliente que conserva el estado HTTP y un mensaje acotado del servidor. */
@@ -36,6 +41,10 @@ export async function authenticatedResponseRequest(path: string, init: RequestIn
   // El SDK restaura/renueva la sesión; solo el backend autoriza este token.
   const { data, error } = await client.auth.getSession();
   if (error || !data.session) throw new AuthApiError(401);
+  /**
+   * El bearer de la sesión vigente reemplaza cualquier Authorization del llamante.
+   * El fetch conserva la señal recibida, evita caché y rechaza redirecciones.
+   */
   const headers = new Headers(init.headers);
   headers.set('Authorization', 'Bearer ' + data.session.access_token);
   const search = query?.toString();
@@ -51,6 +60,10 @@ export async function authenticatedResponseRequest(path: string, init: RequestIn
       if (typeof body === 'object' && body !== null && 'error' in body && typeof body.error === 'object'
         && body.error !== null && 'message' in body.error && typeof body.error.message === 'string' && body.error.message.length <= 500) message = body.error.message;
     } catch { /* Si la respuesta no es JSON, se conserva de todos modos el estado HTTP. */ }
+    /**
+     * Conserva estado y campos de error acotados para que los hooks distingan
+     * validación, sesión rechazada, conflicto y fallos temporales sin leer HTML arbitrario.
+     */
     throw new AuthApiError(response.status, message, code);
   }
   return response;

@@ -1,3 +1,8 @@
+/**
+ * Estado de ficha y mutaciones de una actividad, separado de los componentes visuales.
+ * Conserva participación propia aun ante 404 de la ficha y serializa inscripción,
+ * retiro y eliminación para no aplicar respuestas fuera de su ámbito.
+ */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { AuthApiError } from '@/lib/api/authenticated-request';
@@ -46,6 +51,10 @@ export function useActivityDetail(activityId: string) {
         if (!abort.signal.aborted) setState({ ...initial, detail });
       } catch (reason) {
         if (abort.signal.aborted) return;
+        /**
+         * Desaparecer del mapa no implica perder la inscripción. Se consulta el endpoint
+         * propio para poder mostrarla y, si corresponde, permitir el retiro.
+         */
         if (reason instanceof AuthApiError && reason.status === 404) {
           try {
             const ownParticipation = await fetchActivityParticipation(campusId, activityId, abort.signal);
@@ -82,6 +91,10 @@ export function useActivityDetail(activityId: string) {
     mutation.current = abort;
     const intentKey = JSON.stringify([campusId, identity?.profile.id, activityId, target]);
     if (interactionIntent.current?.key !== intentKey) interactionIntent.current = { key: intentKey, id: activityOperationId() };
+    /**
+     * La misma intención conserva el ID si falla la respuesta y se reintenta.
+     * Se borra al confirmar: un nuevo acto del usuario necesita otra clave de operación.
+     */
     const operationId = interactionIntent.current.id;
     setState(current => current.key === key ? { ...current, pendingParticipation: target, participationError: null } : current);
     try {

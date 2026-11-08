@@ -1,3 +1,8 @@
+/**
+ * Fábrica HTTP: combina seguridad, cuotas, parseo, rutas y errores sin escuchar.
+ * AppDependencies permite sustituir consultas y el almacén de cuotas en pruebas;
+ * crear la aplicación no demuestra que las bases estén disponibles.
+ */
 import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
@@ -39,6 +44,10 @@ export function createApp(dependencies: AppDependencies = {}): Express {
     else jsonParser(request, response, next);
   });
   app.use('/api/v1', createApiRouter(dependencies));
+  /**
+   * El orden es significativo: primero se resuelven rutas y después los 404.
+   * El manejador de errores va al final para traducir fallos de las capas anteriores.
+   */
   app.use(notFoundHandler);
   app.use(apiErrorHandler);
 

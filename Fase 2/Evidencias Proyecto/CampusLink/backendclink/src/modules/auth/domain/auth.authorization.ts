@@ -1,3 +1,8 @@
+/**
+ * Reglas de autorización reutilizables sin consultas ni dependencias de Express.
+ * El llamante aporta un contexto vigente y el campus obtenido de datos confiables.
+ * Ser propietario y administrar un campus son comprobaciones distintas.
+ */
 import { ApiError } from '../../../shared/errors/api-error.js';
 import type { AuthProfile, VerifiedAuthConnection } from '../types/auth.types.js';
 
@@ -22,6 +27,10 @@ export function accountCapabilities(context: VerifiedAuthConnection, campusId = 
   const localRoles = context.roles.filter(role => role.campusId === campusId);
   const admin = localRoles.some(role => role.name === 'ADMINISTRADOR');
   const authorized = localRoles.some(role => role.name === 'USUARIO_AUTORIZADO');
+  /**
+   * Un administrador obtiene la capacidad en su campus. El usuario autorizado
+   * necesita además el permiso correspondiente; los permisos aislados no bastan.
+   */
   const has = (name: string) => admin || (authorized && context.permissions.some(permission =>
     permission.campusId === campusId && permission.name === name));
   return {
@@ -46,6 +55,12 @@ export function requireCampusCapability(context: VerifiedAuthConnection, campusI
   if (!allowed) throw new ApiError(403, 'FORBIDDEN', 'No tienes autorización para esta operación en este campus.');
 }
 
+/**
+ * Verifica cuenta activa y coincidencia exacta con el propietario persistido.
+ * Parámetro: context Contexto de identidad y perfil validado por el servidor.
+ * Parámetro: ownerId Dueño obtenido del recurso, no del usuario que solicita la operación.
+ * Devuelve: Sin valor si se permite; lanza 403 ante una cuenta o propietario inválidos.
+ */
 export function requireResourceOwner(context: VerifiedAuthConnection, ownerId: string) {
   requireActiveAccount(context.profile, context.userId);
   // La propiedad se comprueba aparte; cada operación debe declarar expresamente

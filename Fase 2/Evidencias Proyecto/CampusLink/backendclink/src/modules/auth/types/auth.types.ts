@@ -1,3 +1,8 @@
+/**
+ * Contratos de identidad y cuenta compartidos por middleware, servicios y rutas.
+ * VerifiedIdentity representa correo confirmado antes de provisionar el perfil;
+ * VerifiedAuthConnection agrega perfil y concesiones para autorizar operaciones.
+ */
 import type { ModuleHealth } from '../../../shared/health/health.types.js';
 export type AuthHealth = ModuleHealth<'auth'>;
 /** Proyección del perfil institucional consultada desde PostgreSQL. */

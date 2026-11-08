@@ -1,3 +1,8 @@
+/**
+ * Edición individual con previewHash ligado al contenido y revisión elegidos.
+ * El servicio calcula el plan; el repositorio recibe ese planificador como callback
+ * para repetirlo con lectores de su propia sesión y evitar un ciclo de imports.
+ */
 import { createHash } from 'node:crypto';
 import { requireIndividualEdit } from '../domain/activities.edit.js';
 import type { VerifiedAuthConnection } from '../../auth/types/auth.types.js';
@@ -69,6 +74,10 @@ export async function editActivity(auth: VerifiedAuthConnection, activityId: str
   dependencies: ActivityEditDependencies = {}): Promise<ActivityEditResult> {
   const plan = await previewActivityEdit(auth, activityId, input, dependencies);
   if (plan.previewHash !== input.previewHash) throw conflict();
+  /**
+   * La escritura inyectada sirve a pruebas. En producción el repositorio recalcula
+   * el plan dentro de MongoDB; no confía solo en la vista previa calculada afuera.
+   */
   if (dependencies.saveEdit) return dependencies.saveEdit(plan);
   return (await import('../repositories/activities.edit.repository.js')).commitActivityEdit(auth, activityId, input, dependencies.now?.() ?? new Date(), previewActivityEdit);
 }

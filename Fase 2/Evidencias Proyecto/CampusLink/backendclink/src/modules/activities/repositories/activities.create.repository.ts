@@ -1,3 +1,8 @@
+/**
+ * Persistencia transaccional Mongo de una nueva actividad y su participación.
+ * La actividad, el evento JOINED y los avisos pendientes se confirman juntos.
+ * Requiere un despliegue Mongo compatible con transacciones y el índice de participación.
+ */
 import { getMongoDB as getMongoDb } from '../../../database/mongodb/client.js';
 import { mongoClient } from '../../../database/mongodb/client.js';
 import { ApiError } from '../../../shared/errors/api-error.js';
@@ -24,6 +29,10 @@ export async function insertActivity(document: ActivityDocument, options: Activi
     const limited = document.type === 'COMMUNITY_ACTIVITY' && options.limitActiveCommunity === true;
     // La escritura compartida obliga a reintentar instantáneas concurrentes antes de revisar el cupo.
     // Contar sin esa escritura permitiría una anomalía de escritura: los IDs insertados no colisionan.
+    /**
+     * Para usuarios sujetos al cupo, la revisión del mapa crea un punto de contención.
+     * Dos altas concurrentes no pueden aprobar el mismo cupo basándose en snapshots distintos.
+     */
     const map = limited
       ? await maps.findOneAndUpdate({ campusId: document.campusId, status: 'ACTIVE' },
         { $inc: { communityActivityCreationRevision: 1 } }, { session, returnDocument: 'after' })

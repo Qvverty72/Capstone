@@ -1,3 +1,8 @@
+/**
+ * Marcadores de carga sin datos del dominio, compartidos por las pantallas.
+ * El grupo anuncia una sola carga accesible y anima con Animated; reduceMotion
+ * anula el pulso y el cleanup detiene animación y suscripción al desmontar.
+ */
 import { useEffect, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, Animated, Platform, StyleSheet, View,
   type DimensionValue, type StyleProp, type ViewStyle } from 'react-native';

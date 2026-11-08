@@ -1,3 +1,8 @@
+/**
+ * Pantalla de acuerdo físico con lecturas independientes de detalle, chat y ubicación.
+ * Polling y mutaciones se coordinan mediante refs; las confirmaciones/cancelaciones
+ * se concilian con el DTO del servidor y no se infieren solo del botón pulsado.
+ */
 import {useEffect,useRef,useState} from 'react';
 import {useAuth} from '@/features/auth/hooks/useAuth';
 import {AuthApiError} from '@/lib/api/authenticated-request';
@@ -127,6 +132,11 @@ export function usePhysicalgoodsTransaction(target:PhysicalgoodsTransactionTarge
     if(running.current||detailRead.current||current.loading||current.action||current.ratingConfirmation)return;
     cancelPolling();detailRead.current=true;setLoading(true);setDetailRefreshing(true);setError(null);setDetailRevision(value=>value+1);
   }
+  /**
+   * Serializa confirmación, cancelación, mensaje y valoración con sus precondiciones.
+   * Detiene consultas periódicas durante la mutación para que una respuesta anterior
+   * no reponga un estado que acaba de cambiar.
+   */
   async function perform(kind:'confirm'|'cancel'|'message'|'rating',explicitSubmit=false) {
     if(running.current||detailRead.current||loading||error||!detail||(kind==='confirm'&&(!detail.canConfirm||(!explicitSubmit&&action!=='confirm')))||(kind==='cancel'&&(!detail.canCancel||action!=='cancel'))||(kind==='message'&&(!detail.canCancel||!preview||optionsLoading||optionsError))
       ||(kind==='rating'&&(detail.status!=='COMPLETADA'||detail.role!=='RECEPTOR'||Boolean(detail.rating)||!detail.canRate||(!explicitSubmit&&!ratingConfirmation)||ratingScore===null||!Number.isInteger(ratingScore)||ratingScore<1||ratingScore>5)))return;

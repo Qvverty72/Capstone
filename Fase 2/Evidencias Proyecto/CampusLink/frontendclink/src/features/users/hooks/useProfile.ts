@@ -1,3 +1,8 @@
+/**
+ * Modelo de presentación del encabezado de perfil, capacidades y cierre de sesión.
+ * La caché académica vive en memoria y se limita a usuario/campus/inicio de sesión;
+ * se invalida explícitamente al recargar y no constituye persistencia de dominio.
+ */
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { loadAcademicProfile } from '../api/profileApi';
@@ -44,6 +49,10 @@ export function useProfile() {
 
   // No presentar datos de una identidad anterior mientras se ejecuta el nuevo efecto.
   // Renovar la identidad del mismo usuario/campus no invalida el encabezado.
+  /**
+   * El efecto puede ejecutarse después del render: este filtro evita mostrar
+   * momentáneamente el perfil cacheado de otra identidad o de otro campus.
+   */
   const currentAcademic = academicScope && academicState.scope === academicScope ? academicState
     : academicScope && cachedAcademic?.scope === academicScope ? { ...cachedAcademic, error: null, loading: false } : null;
   const academicProfile = currentAcademic?.profile ?? null;

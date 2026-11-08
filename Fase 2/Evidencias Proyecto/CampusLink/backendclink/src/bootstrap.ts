@@ -1,3 +1,8 @@
+/**
+ * Ciclo de vida de la API separado de Express para poder probarlo con dobles.
+ * La composición predeterminada conecta MongoDB/Redis y comprueba los módulos;
+ * PostgreSQL crea su pool cuando un repositorio solicita una transacción.
+ */
 import type { Server } from 'node:http';
 import { app } from './app.js';
 import { env } from './config/env.js';
@@ -40,6 +45,13 @@ export async function startApi(dependencies: BootstrapDependencies = defaults): 
   }
 }
 
+/**
+ * Deja de aceptar conexiones y espera el cierre HTTP antes de liberar los pools.
+ * El servidor llamante detiene sus workers antes de invocar esta función.
+ * El bloque finally cierra dependencias incluso si falla el cierre del servidor.
+ * Parámetro: server Servidor previamente abierto por startApi.
+ * Devuelve: Promesa que finaliza al liberar recursos; propaga los errores de cierre.
+ */
 export async function stopApi(server: Server): Promise<void> {
   try {
     await new Promise<void>((resolve, reject) => {

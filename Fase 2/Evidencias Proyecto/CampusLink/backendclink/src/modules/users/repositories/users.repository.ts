@@ -1,3 +1,8 @@
+/**
+ * Lecturas de perfil/catálogos por Data API y escritura atómica por pg.
+ * La transacción expone un repositorio ligado al mismo cliente: bloquea perfil,
+ * roles, campus y carreras antes de reemplazar asociaciones académicas.
+ */
 import { inspectDependencies } from '../../../database/health.js';
 import { probeSupabaseTables } from '../../../database/supabase/health.js';
 import type { DependencyChecks } from '../../../shared/health/health.types.js';
@@ -22,6 +27,11 @@ export async function findAcademicOptions(institutionId: string) {
   return { campuses, careers, offerings };
 }
 
+/**
+ * Construye operaciones que comparten BEGIN/COMMIT y el orden de locks.
+ * Devuelve: Resultado del caso de uso; cualquier error revierte todas las escrituras,
+ * incluida la actualización de nombre/campus y la lista de carreras.
+ */
 export function withAcademicProfileTransaction<T>(operation: (repository: AcademicProfileTransaction) => Promise<T>): Promise<T> {
   // Bloquea perfil, asignaciones y catálogos antes de validar y escribir para mantener una sola versión coherente.
   return withPostgresTransaction(async client => operation({

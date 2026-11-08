@@ -1,3 +1,8 @@
+/**
+ * Adaptador del driver oficial MongoDB compartido por mapas y actividades.
+ * Centraliza el pool y los límites de tiempo; los repositorios eligen colecciones
+ * y sesiones transaccionales sin crear un cliente por petición.
+ */
 import { setServers } from 'node:dns/promises';
 import { Db, MongoClient } from 'mongodb';
 import { env } from '../../config/env.js';
@@ -15,6 +20,10 @@ export const mongoClient = new MongoClient(env.mongodbUri, {
 });
 /** Abre el cliente compartido y espera una respuesta de ping antes de declarar MongoDB disponible. */
 export async function connectMongoDB(): Promise<Db> {
+  /**
+   * El deadline limita la espera del llamante. Una resolución DNS tardía no siempre
+   * se cancela; por eso el catch también programa el cierre de una conexión tardía.
+   */
   const attempt = mongoClient.connect();
   try { await withDeadline(attempt); }
   catch (error: unknown) {
@@ -27,6 +36,10 @@ export async function connectMongoDB(): Promise<Db> {
     void attempt.then(() => mongoClient.close()).catch(() => {});
     throw new Error('MongoDB connection timed out or failed');
   }
+  /**
+   * Conectar el driver no basta como sonda: ping comprueba que el servidor responde.
+   * El Db devuelto es un manejador de la base, no una copia de sus documentos.
+   */
   const db = getMongoDB();
   await db.command({ ping: 1 }, { timeoutMS: env.databaseTimeoutMs });
   return db;

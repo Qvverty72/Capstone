@@ -1,3 +1,8 @@
+/**
+ * Disponibilidad de arranque calculada a partir de siete diagnósticos de módulo.
+ * Consulta sus sondas en paralelo y exige que todos respondan correctamente.
+ * Activities no tiene una entrada independiente en esta lista.
+ */
 import { getAnalyticsHealth } from './modules/analytics/services/analytics.service.js';
 import { getAuthHealth } from './modules/auth/services/auth.service.js';
 import { getMapHealth } from './modules/maps/services/map.service.js';

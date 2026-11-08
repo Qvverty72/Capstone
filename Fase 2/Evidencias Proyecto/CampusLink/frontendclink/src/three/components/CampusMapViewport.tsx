@@ -1,3 +1,8 @@
+/**
+ * Viewport del mapa que compone la escena y sus controles React Native.
+ * Mantiene el botón y el panel de actividades fuera del árbol de objetos Three,
+ * para que funcionen como interfaz 2D superpuesta sobre el Canvas.
+ */
 import { StyleSheet, View } from 'react-native';
 import { BuildingCloseButton } from '@/three/components/BuildingCloseButton';
 import { CampusMap } from '@/three/components/CampusMap';

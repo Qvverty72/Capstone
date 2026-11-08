@@ -1,3 +1,8 @@
+/**
+ * Composición de los routers funcionales bajo el prefijo que instala app.ts.
+ * Health informa que HTTP responde; ready consulta la salud de los módulos y solo
+ * se registra con los diagnósticos optativos del entorno de desarrollo.
+ */
 import { createPolicyRouter, publicEndpoint } from '../shared/http/endpoint-policy.js';
 import type { Router } from 'express';
 import { createActivitiesRouter } from '../modules/activities/activities.routes.js';

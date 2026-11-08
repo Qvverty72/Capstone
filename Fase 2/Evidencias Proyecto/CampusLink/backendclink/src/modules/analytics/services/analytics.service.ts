@@ -1,3 +1,8 @@
+/**
+ * Aplicación analítica: valida alcance institucional, consulta SQL/Mongo y guarda
+ * reportes con versión de cálculo. Distingue cero observado, datos no disponibles
+ * y cobertura parcial; las consultas de ambos motores no comparten snapshot.
+ */
 import { createModuleHealthCheck } from '../../../shared/health/module-health.js';
 import { probeAnalyticsDependencies } from '../repositories/analytics.repository.js';
 import type { AnalyticalReport, AnalyticsHealth, DashboardData, DashboardMetrics, DashboardPeriod, DashboardQuery, DemandCount, HistoricalReportsQuery } from '../types/analytics.types.js';
@@ -67,6 +72,11 @@ export async function getDashboardOptions(auth: VerifiedAuthConnection) {
   }
 }
 
+/**
+ * Convierte fechas civiles America/Santiago a intervalos y recorta al instante de generación.
+ * Las cifras provienen de persistencia; el cliente solo aporta filtros autorizables.
+ * Devuelve: Métricas totales y por intervalo con notas de cobertura.
+ */
 export async function getDashboard(auth: VerifiedAuthConnection, rawQuery: unknown): Promise<DashboardData> {
   const query = parseDashboardQuery(rawQuery, auth.campusId, auth.profile.institucion_id);
   requireActiveAccount(auth.profile, auth.userId);
@@ -119,6 +129,10 @@ export async function getDashboard(auth: VerifiedAuthConnection, rawQuery: unkno
 }
 
 /** Un solo cálculo/validación para tablero y reporte; nunca recibe cifras del cliente. */
+/**
+ * Congela el resultado del tablero y revalida permisos antes de guardarlo en SQL.
+ * Devuelve: Instantánea con autor, versión y filtros; descargarla luego no recalcula métricas.
+ */
 export async function generateAnalyticalReport(auth: VerifiedAuthConnection, filters: unknown): Promise<AnalyticalReport> {
   const dashboard = await getDashboard(auth, filters);
   const normalized: DashboardQuery = { institutionId: dashboard.scope.institutionId,

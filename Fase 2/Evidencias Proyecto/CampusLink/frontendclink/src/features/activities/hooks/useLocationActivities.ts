@@ -1,3 +1,8 @@
+/**
+ * Consulta React de actividades por ubicación y sesión, consumida por panel y mapa.
+ * La key incluye campus, usuario y filtros; el reloj local retira ocurrencias vencidas
+ * y dispara revalidación, sin sustituir la decisión de visibilidad del servidor.
+ */
 import { useCallback, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -20,6 +25,10 @@ export function useLocationActivities(query: ActivityLocationQuery = {}, enabled
   const userId = identity?.userId;
   const { buildingKey, floorKey, poiKey } = query;
   const key = JSON.stringify([campusId, userId, buildingKey, floorKey, poiKey, enabled]);
+  /**
+   * Una revisión manual muestra carga; una revisión de fondo puede conservar datos
+   * válidos del mismo ámbito mientras llega la respuesta. Un 401/403 sí los retira.
+   */
   const [revision, setRevision] = useState({ value: 0, background: false });
   const refresh = useCallback(() => setRevision(previous => ({ value: previous.value + 1, background: false })), []);
   const [clock, setClock] = useState(Date.now);
