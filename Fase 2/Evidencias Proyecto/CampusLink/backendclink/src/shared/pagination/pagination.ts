@@ -1,3 +1,8 @@
+/**
+ * Paginación común por page/limit para rutas que usan desplazamiento.
+ * Acepta cadenas enteras positivas, limita la página a un offset seguro y la cuota
+ * a 100 filas; otros módulos usan cursores y no pasan por este contrato.
+ */
 import type {
   PaginationMeta,
   PaginationParams,
@@ -12,6 +17,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/**
+ * Recibe un valor HTTP desconocido y devuelve entero o detalle de error.
+ * Rechaza arrays, signos, decimales y valores fuera del rango seguro sin coerción permisiva.
+ */
 function parsePositiveInteger(
   value: unknown,
   field: 'page' | 'limit',
@@ -75,6 +84,11 @@ export function parsePaginationQuery(
 }
 
 /** Recorta el resultado consultado con un elemento adicional y construye los metadatos de paginación. */
+/**
+ * El repositorio debe consultar limit + 1; la fila extra solo prueba hasMore.
+ * @returns Copia limitada de los datos y metadatos de página, sin inventar un total.
+ * Si se necesita total, el caso de uso debe obtenerlo mediante otra consulta.
+ */
 export function createPaginatedResult<T>(
   fetchedItems: readonly T[],
   pagination: PaginationParams,
