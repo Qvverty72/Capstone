@@ -1,3 +1,8 @@
+/**
+ * Ciclo de vida de la API separado de Express para poder probarlo con dobles.
+ * La composición predeterminada conecta MongoDB/Redis; PostgreSQL abre su pool
+ * cuando las sondas o los repositorios lo necesitan.
+ */
 import type { Server } from 'node:http';
 import { setTimeout as wait } from 'node:timers/promises';
 import { app } from './app.js';
@@ -33,9 +38,8 @@ const defaults: BootstrapDependencies = {
 export async function startApi(dependencies: BootstrapDependencies = defaults): Promise<Server> {
   try {
     await dependencies.connect();
-    // Fresh provider connections can fail transiently (observed on Supabase in Render).
-    // Retry read-only probes, never opening HTTP until every dependency is ready.
-    // Wait beyond the readiness cache TTL so a cached failure can expire.
+    // Reintenta hasta tres verificaciones de solo lectura antes de abrir HTTP.
+    // Esperar más que el TTL permite que una respuesta fallida en caché expire.
     for (let attempt = 1; ; attempt++) {
       const readiness = await dependencies.verify();
       if (readiness.status === 'ok') break;
@@ -50,6 +54,13 @@ export async function startApi(dependencies: BootstrapDependencies = defaults): 
   }
 }
 
+/**
+ * Deja de aceptar conexiones y drena los workers en paralelo antes de cerrar pools.
+ * El bloque finally libera las dependencias incluso si falla el drenaje.
+ * @param server Servidor previamente abierto por startApi.
+ * @param drainWorkers Callback que espera la finalización de las tareas periódicas.
+ * @returns Promesa que termina al liberar los recursos; propaga fallos de cierre.
+ */
 export async function stopApi(server: Server, drainWorkers: () => Promise<unknown> = async () => {}): Promise<void> {
   try {
     await Promise.all([new Promise<void>((resolve, reject) => {
