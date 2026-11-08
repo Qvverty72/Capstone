@@ -1,3 +1,8 @@
+/**
+ * Formulario de alta física con fotografía principal y cola de secundarias.
+ * La publicación confirmada se conserva aunque falle una foto posterior;
+ * reintentar continúa la cola usando su ID, sin repetir el alta del recurso.
+ */
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { AuthApiError } from '@/lib/api/authenticated-request';
@@ -80,6 +85,10 @@ export function usePublishPhysicalgoods(onPublished: () => void) {
         if (abort.signal.aborted) return;
         setCreated(publication); queued.current = photos.slice(1); setRemaining(queued.current.length); onPublished();
       }
+/**
+ * Solo retira de la cola una imagen tras su acuse. Un fallo deja visibles las
+ * pendientes para reanudar, mientras el recurso principal ya puede estar publicado.
+ */
       while (queued.current.length) {
         await addPhysicalgoodsPhoto(publication.id, queued.current[0], abort.signal);
         if (abort.signal.aborted) return;
@@ -93,6 +102,10 @@ export function usePublishPhysicalgoods(onPublished: () => void) {
         : reason instanceof Error ? reason.message : 'No se pudo publicar el recurso.');
     } finally { saving.current = false; if (!abort.signal.aborted) setBusy(false); }
   }
+/**
+ * Limpia el borrador cuando no hay picker ni guardado en curso.
+ * No elimina la publicación ni las fotografías que ya confirmó el servidor.
+ */
   function reset() {
     if (saving.current || picking.current) return;
     setCreated(null); setTitle(''); setDescription(''); setCondition('BUEN_ESTADO'); setCategoryId('');
