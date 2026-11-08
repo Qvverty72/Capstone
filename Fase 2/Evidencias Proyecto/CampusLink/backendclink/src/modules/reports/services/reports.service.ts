@@ -1,3 +1,8 @@
+/**
+ * Denuncias de actividades y acuse propio; reports aquí significa moderación,
+ * no reportería analítica. Valida visibilidad en mapa y referencias del creador
+ * antes de guardar una instantánea del contenido observado.
+ */
 import { createModuleHealthCheck } from '../../../shared/health/module-health.js';
 import { findOwnActivityReport, probeReportsDependencies, saveActivityReport } from '../repositories/reports.repository.js';
 import type { ReportsHealth } from '../types/reports.types.js';
@@ -43,6 +48,10 @@ export async function reportActivity(auth: VerifiedAuthConnection, activityId: s
   const creators = await validActivityCreators(auth, [document.createdByUserId], dependencies);
   if (!creators.has(document.createdByUserId)) throw new ApiError(404, 'NOT_FOUND', 'Esta actividad ya no está disponible para denunciar.');
   // Conserva el contenido que vio quien denuncia; excluye participación, historial de cambios y avisos.
+/**
+ * La evidencia conserva texto y revisión del momento denunciado.
+ * No se reconstruye luego con el contenido editado ni incluye listas de participantes.
+ */
   const snapshot: ActivityReportSnapshot = { ...visible, visibility: 'PUBLIC', revision: document.editRevision ?? 0 };
   if (typeof document.createdByUserId === 'string' && /^[0-9a-f-]{36}$/i.test(document.createdByUserId)) snapshot.createdByUserId = document.createdByUserId;
   if (typeof document.bannerUrl === 'string') {
