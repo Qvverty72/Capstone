@@ -1,8 +1,3 @@
-/**
- * Flujo de exportación por reporte y ámbito de identidad.
- * Separa preparación remota de entrega al dispositivo para mostrar progreso real;
- * la API revalida permisos y saveFile realiza únicamente el guardado/compartido local.
- */
 import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -11,10 +6,6 @@ import { saveFile } from '@/lib/files/saveFile';
 import { downloadReport, type ReportExportFormat } from '../api/reportExportApi';
 import { canAccessAnalytics } from '../types/access';
 
-/**
- * Expone estado de formato, fase, aviso y error, además de la acción exportFile.
- * Una sola operación puede estar pendiente; cambiar contexto cancela su aplicación visual.
- */
 export function useReportExport(reportId: string) {
   const auth = useAuth(), identity = auth.identity, allowed = canAccessAnalytics(identity);
   const key = JSON.stringify([reportId, identity?.userId, identity?.campusId, identity?.profile.institucion_id,

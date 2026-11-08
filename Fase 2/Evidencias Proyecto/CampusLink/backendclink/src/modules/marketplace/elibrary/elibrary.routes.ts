@@ -1,8 +1,3 @@
-/**
- * Router digital con catálogo, biblioteca propia/adquirida, acuerdos y archivos.
- * Autentica antes de delegar multipart al controlador; descarga y muestra usan rutas
- * distintas porque la muestra no concede acceso al PDF original.
- */
 import { createPolicyRouter, publicEndpoint } from '../../../shared/http/endpoint-policy.js';
 import type { Router } from 'express';
 import { getElibraryHealthController } from './controllers/elibrary.controller.js';

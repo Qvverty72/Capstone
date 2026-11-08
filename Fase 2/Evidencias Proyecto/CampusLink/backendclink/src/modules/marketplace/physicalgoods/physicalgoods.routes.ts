@@ -1,8 +1,3 @@
-/**
- * Router de publicaciones físicas, imágenes, solicitudes, acuerdos e historial.
- * Las cargas JSON/base64 usan parser de 7 MB después de autenticar; el parser global
- * de app.ts omite precisamente esas rutas para conservar ese orden.
- */
 import { createPolicyRouter, publicEndpoint } from '../../../shared/http/endpoint-policy.js';
 import { json, Router } from 'express';
 import { createPhysicalgoodsController, getPhysicalgoodsHealthController, getPhysicalgoodsOptionsController, getPhysicalgoodsPhotoController } from './controllers/physicalgoods.controller.js';

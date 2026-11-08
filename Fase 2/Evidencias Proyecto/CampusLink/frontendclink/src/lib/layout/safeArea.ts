@@ -1,16 +1,6 @@
-/**
- * Cálculo de espaciado para bordes seguros sin duplicar fórmulas en pantallas.
- * Usa insets numéricos nativos y CSS env en web; base, mínimo y desplazamiento
- * permiten reservar espacio para cabeceras o navegación flotante.
- */
 import { Platform, type DimensionValue } from 'react-native';
 
 /** Conserva el espaciado nativo; Router 58 requiere CSS env para los insets web. */
-/**
- * Recibe borde, inset nativo y ajustes de separación.
- * Devuelve: Número en nativo o expresión CSS compatible con DimensionValue en web.
- * El resultado es estilo de layout, no una medición numérica uniforme entre plataformas.
- */
 export function safeAreaInset(
   edge: 'top' | 'bottom' | 'left' | 'right',
   nativeInset: number,

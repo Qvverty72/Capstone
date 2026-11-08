@@ -4,15 +4,3 @@
 
 expo-env.d.ts
 # @end expo-cli
-
-# Generated native projects, installable artifacts and private signing credentials.
-/android/
-/ios/
-/artifacts/
-/artifacts-ios/
-*.apk
-*.aab
-*.jks
-*.keystore
-*.p12
-credentials.json

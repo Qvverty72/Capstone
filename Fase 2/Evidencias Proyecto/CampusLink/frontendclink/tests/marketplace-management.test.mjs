@@ -1,4 +1,3 @@
-import { publicContent } from './helpers/public-content.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -8,7 +7,7 @@ import ts from 'typescript';
 import * as jsx from 'react/jsx-runtime';
 import {renderCatalog} from './helpers/marketplace-render.mjs';
 const noop=()=>{},nodes=node=>!node||typeof node!=='object'?[]:[node,...[node.props?.children].flat(6).flatMap(nodes)];
-function load(file,deps){const module={exports:{}};const code=ts.transpileModule(fs.readFileSync(new URL('../src/features/marketplace/'+file,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;vm.runInNewContext(code,{module,exports:module.exports,AbortController,require:name=>{ if (name.endsWith('/lib/validation/public-content')) return publicContent; assert.ok(Object.hasOwn(deps,name),name);return deps[name];}});return module.exports;}
+function load(file,deps){const module={exports:{}};const code=ts.transpileModule(fs.readFileSync(new URL('../src/features/marketplace/'+file,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;vm.runInNewContext(code,{module,exports:module.exports,AbortController,require:name=>{assert.ok(Object.hasOwn(deps,name),name);return deps[name];}});return module.exports;}
 function runtime(){const slots=[];let index=0,effects=[];const react={useState(initial){const i=index++;slots[i]??={value:typeof initial==='function'?initial():initial};return[slots[i].value,value=>slots[i].value=typeof value==='function'?value(slots[i].value):value];},useRef(initial){const i=index++;return slots[i]??={current:initial};},useEffect(fn,deps){const i=index++,old=slots[i];if(!old||deps.some((v,j)=>!Object.is(v,old.deps[j])))effects.push(()=>{old?.cleanup?.();slots[i]={deps,cleanup:fn()};});}};return{react,render:fn=>{index=0;effects=[];const result=fn();effects.forEach(fn=>fn());return result;}};}
 const native={View:'View',Text:'Text',Pressable:'Button',TextInput:'Input',Image:'Image',ScrollView:'Scroll',ActivityIndicator:'Busy',StyleSheet:{create:v=>v}};
 test('personal publication administration opens only its gallery and returns after withdrawal',()=>{

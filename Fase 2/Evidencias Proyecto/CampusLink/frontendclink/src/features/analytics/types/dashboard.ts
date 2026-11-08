@@ -1,5 +1,3 @@
-import type { DashboardAnalysis } from './analysis';
-
 export interface DashboardScope {
   institutionId: string;
   institutionName: string;
@@ -18,7 +16,6 @@ export interface DashboardPeriod { from: string; to: string; timeZone: string; c
 export interface DashboardMetric { value: number | null; period: DashboardPeriod; scope: DashboardScope }
 interface DemandCount { views: number; requests: number }
 export interface DashboardMetrics {
-  analysis?: DashboardAnalysis | null;
   period: DashboardPeriod;
   scope: DashboardScope;
   activeUsers: DashboardMetric;
@@ -46,7 +43,7 @@ export interface DashboardData extends DashboardMetrics {
 export interface AnalyticalReport extends DashboardData {
   id: string;
   generatedBy: { userId: string; name: string; email?: string | null };
-  calculationVersion: 'campuslink-kpi-v1' | 'campuslink-kpi-v2';
+  calculationVersion: 'campuslink-kpi-v1';
 }
 
 export type HistoricalReportSummary = Pick<AnalyticalReport, 'id' | 'generatedAt' | 'generatedBy' | 'scope' | 'period' | 'grouping' | 'calculationVersion'>;

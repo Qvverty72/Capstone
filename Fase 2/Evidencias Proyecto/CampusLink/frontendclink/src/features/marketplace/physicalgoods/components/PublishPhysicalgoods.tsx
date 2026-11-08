@@ -103,7 +103,7 @@ function PublicationForm({ onPublished, onGallery }: { onPublished: () => void; 
   </View>;
   return <View style={f.form}>
     <Text style={f.hint}>Los campos con * son obligatorios.</Text>
-    <PublicationSection number="1" title="Datos del recurso" content={{ title: form.title, description: form.description }}>
+    <PublicationSection number="1" title="Datos del recurso">
       <View style={f.field}><Text style={f.label}>Nombre del recurso *</Text>
         <TextInput accessibilityLabel="Nombre del recurso" placeholder="Ej. Calculadora científica" value={form.title} onChangeText={form.setTitle} maxLength={200} editable={!disabled} style={f.input} /></View>
       <View style={f.field}><Text style={f.label}>Descripción *</Text>

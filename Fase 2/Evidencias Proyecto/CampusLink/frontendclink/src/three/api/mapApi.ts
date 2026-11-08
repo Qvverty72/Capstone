@@ -1,8 +1,3 @@
-/**
- * Cliente específico del mapa y adaptador entre DTO HTTP y configuración Three.
- * Convierte vectores, edificios, pisos y POIs a índices de consulta para la escena;
- * el campus se comprueba antes de publicar el resultado en el store.
- */
 import type {
   BuildingConfig,
   BuildingId,
@@ -173,10 +168,6 @@ export async function fetchActiveCampusMap(campusId: string, accessToken: string
   const map = envelope.data;
   if (map.campusId.toLowerCase() !== campusId.toLowerCase()) throw new Error('El mapa recibido no corresponde a tu campus.');
 
-/**
- * Se construyen índices por ID y meshName para que cámara y modal compartan
- * las mismas referencias. Estos objetos describen el GLB; no descargan geometría.
- */
   const buildingFloors = {} as Record<BuildingId, string[]>;
   const buildingConfigs = {} as Record<BuildingId, BuildingConfig>;
   const floorData: Record<string, FloorDefinition> = {};

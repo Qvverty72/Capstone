@@ -1,8 +1,3 @@
-/**
- * Formulario de alta física con fotografía principal y cola de secundarias.
- * La publicación confirmada se conserva aunque falle una foto posterior;
- * reintentar continúa la cola usando su ID, sin repetir el alta del recurso.
- */
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { AuthApiError } from '@/lib/api/authenticated-request';
@@ -10,7 +5,6 @@ import { addPhysicalgoodsPhoto, loadPublicationOptions, publishPhysicalgoods } f
 import { pickPublicationPhotos } from '../api/photoPicker';
 import type { PublicationCreated, PublicationInput, PublicationOptions, PublicationPhoto } from '../types/publication';
 import { PHYSICALGOODS_MAX_IMAGES } from '../types/publication';
-import { publicationTextError } from '@/lib/validation/public-content';
 
 /** Gestiona borrador, envío inicial y reintentos de subida de fotos secundarias. */
 export function usePublishPhysicalgoods(onPublished: () => void) {
@@ -71,8 +65,6 @@ export function usePublishPhysicalgoods(onPublished: () => void) {
     if (saving.current || picking.current || loading || !options || (created && !queued.current.length)) return;
     const numericPrice = Number(price.trim().replace(',', '.'));
     if (!title.trim() || !description.trim() || !categoryId || !photo) { setError('Completa el nombre, la descripción, la categoría y la fotografía principal.'); return; }
-    const contentError = !created && publicationTextError(title, description);
-    if (contentError) { setError(contentError); return; }
     if (modality === 'VENTA' && (!Number.isFinite(numericPrice) || numericPrice <= 0)) { setError('Ingresa un precio de venta mayor que cero.'); return; }
     const abort = new AbortController(); pending.current = abort; saving.current = true;
     setBusy(true); setError(null);
@@ -85,10 +77,6 @@ export function usePublishPhysicalgoods(onPublished: () => void) {
         if (abort.signal.aborted) return;
         setCreated(publication); queued.current = photos.slice(1); setRemaining(queued.current.length); onPublished();
       }
-/**
- * Solo retira de la cola una imagen tras su acuse. Un fallo deja visibles las
- * pendientes para reanudar, mientras el recurso principal ya puede estar publicado.
- */
       while (queued.current.length) {
         await addPhysicalgoodsPhoto(publication.id, queued.current[0], abort.signal);
         if (abort.signal.aborted) return;
@@ -102,10 +90,6 @@ export function usePublishPhysicalgoods(onPublished: () => void) {
         : reason instanceof Error ? reason.message : 'No se pudo publicar el recurso.');
     } finally { saving.current = false; if (!abort.signal.aborted) setBusy(false); }
   }
-/**
- * Limpia el borrador cuando no hay picker ni guardado en curso.
- * No elimina la publicación ni las fotografías que ya confirmó el servidor.
- */
   function reset() {
     if (saving.current || picking.current) return;
     setCreated(null); setTitle(''); setDescription(''); setCondition('BUEN_ESTADO'); setCategoryId('');

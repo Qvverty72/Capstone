@@ -1,18 +1,8 @@
-/**
- * Puente de autenticación entre Express y Supabase: guarda identidad o contexto
- * en response.locals y consume la cuota del usuario ya verificado.
- * Un 401 agrega WWW-Authenticate; los demás errores siguen al manejador común.
- */
 import type { Request, RequestHandler } from 'express';
 import { ApiError } from '../../../shared/errors/api-error.js';
 import { verifyAuthConnection, verifyAuthIdentity } from '../services/auth.service.js';
 import type { AuthLocals, IdentityLocals } from '../types/auth.types.js';
 
-/**
- * Acepta una única cabecera Authorization con sintaxis Bearer.
- * Extraer su contenido no valida el token: esa verificación se realiza en el servicio.
- * Devuelve: Token para consultar Auth; lanza 401 si falta o la cabecera es ambigua.
- */
 function readAccessToken(request: Request): string {
   const header = request.headers.authorization;
   const match = typeof header === 'string' ? /^Bearer +([A-Za-z0-9._~+\/-]+=*)$/i.exec(header) : null;

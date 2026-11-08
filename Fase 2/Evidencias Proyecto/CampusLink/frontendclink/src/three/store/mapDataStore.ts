@@ -1,8 +1,3 @@
-/**
- * Store Zustand del documento remoto, separado de la selección/cámara de mapStore.
- * Mantiene una sola carga en vuelo; los tokens se reciben al solicitar y no se guardan
- * en el estado. clearMap retira el ámbito anterior cuando cambia usuario o campus.
- */
 import { create } from 'zustand';
 import {
   fetchActiveCampusMap,
@@ -43,10 +38,6 @@ export const useMapDataStore = create<MapDataState>((set, get) => ({
       get().clearMap();
       throw new ApiClientError(401, 'UNAUTHENTICATED', 'Inicia sesión para consultar el mapa.');
     }
-/**
- * Un mapa ya cargado o una carga del mismo campus se reutiliza.
- * Para forzar una nueva lectura hay que limpiar el store; no se trata de polling.
- */
     if (get().data?.campusId === campusId || pending?.campusId === campusId) {
       return;
     }

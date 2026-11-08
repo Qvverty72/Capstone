@@ -112,8 +112,7 @@ after(async () => {
   globalThis.fetch = originalFetch;
   await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
 });
-const input = () => ({ email: ' Person@DUOCUC.CL ', fullName: ' Test Person ', password: 'private password', campusId,
-  acceptedContentPolicy: true, contentPolicyVersion: '2026-11-06' });
+const input = () => ({ email: ' Person@DUOCUC.CL ', fullName: ' Test Person ', password: 'private password', campusId });
 function post(endpoint: string, body: unknown, authorization?: string) {
   return originalFetch(baseUrl + '/api/v1/auth/' + endpoint, { method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(authorization ? { Authorization: authorization } : {}) }, body: JSON.stringify(body) });
@@ -129,10 +128,8 @@ test('Express filters domain/campus admission from server-only repository data, 
   assert.deepEqual((await response.json()).data, [{ dominio: 'duocuc.cl', institucion_id: institution,
     institucion_nombre: 'DUOC UC', campus_id: campusId, campus_nombre: 'San Andres' }]);
 });
-test('signup stores name, campus and versioned acceptance with server time, without an unverified profile', async () => {
-  const startedAt = Date.now();
+test('signup stores name and campus in Auth metadata and never creates an unverified profile', async () => {
   const response = await register();
-  const finishedAt = Date.now();
   assert.equal(response.status, 202);
   assert.equal(response.headers.get('cache-control'), 'no-store');
   assert.deepEqual(await response.json(), { data: { status: 'verification_required' } });
@@ -140,34 +137,8 @@ test('signup stores name, campus and versioned acceptance with server time, with
   const signup = calls.find(call => call.path.endsWith('/signup'))!;
   assert.equal(signup.body.email, 'person@duocuc.cl');
   assert.equal(signup.body.password, 'private password');
-  const metadata = signup.body.data as Record<string, unknown>;
-  assert.deepEqual(metadata, { nombre_completo: 'Test Person', campus_id: campusId,
-    content_policy_version: '2026-11-06', content_policy_accepted_at: metadata.content_policy_accepted_at });
-  assert.equal(typeof metadata.content_policy_accepted_at, 'string');
-  const acceptedAt = Date.parse(metadata.content_policy_accepted_at as string);
-  assert.ok(acceptedAt >= startedAt && acceptedAt <= finishedAt, 'Acceptance time comes from the server during signup');
+  assert.deepEqual(signup.body.data, { nombre_completo: 'Test Person', campus_id: campusId });
   assert.ok(!calls.some(call => call.path.endsWith('/perfil_usuario')));
-});
-
-test('registration rejects absent, false and coerced policy acceptance before any provider call', async () => {
-  for (const acceptedContentPolicy of [undefined, null, false, 'true', 1, [], {}]) {
-    const response = await register({ ...input(), acceptedContentPolicy });
-    assert.equal(response.status, 400);
-    assert.equal((await response.json()).error.code, 'CONTENT_POLICY_ACCEPTANCE_REQUIRED');
-    assert.deepEqual(calls, []);
-  }
-});
-
-test('registration requires the current policy version and rejects client-supplied acceptance dates', async () => {
-  for (const contentPolicyVersion of [undefined, null, '', '2026-11-05', '2099-01-01', true, {}]) {
-    const response = await register({ ...input(), contentPolicyVersion });
-    assert.equal(response.status, 400);
-    assert.equal((await response.json()).error.code, 'CONTENT_POLICY_VERSION_MISMATCH');
-    assert.deepEqual(calls, []);
-  }
-  const response = await register({ ...input(), content_policy_accepted_at: '2000-01-01T00:00:00Z' });
-  assert.equal(response.status, 400);
-  assert.deepEqual(calls, []);
 });
 test('invalid format and privilege fields fail before provider/persistence calls', async () => {
   for (const body of [null, [], {}, { ...input(), email: 'bad@@duocuc.cl' }, { ...input(), fullName: ' ' },
@@ -247,14 +218,6 @@ test('verification preserves a session and Auth metadata lets an authenticated r
   assert.equal((await complete()).status, 200); assert.ok(profile);
   const posts = profilePosts;
   assert.equal((await complete()).status, 200); assert.equal(profilePosts, posts);
-});
-
-test('previous pending registrations can complete without retroactive policy metadata', async () => {
-  emailConfirmed = true;
-  authMetadata = { nombre_completo: 'Existing Person', campus_id: campusId };
-  assert.equal((await complete()).status, 200);
-  assert.equal(profile?.nombre_completo, 'Existing Person');
-  assert.equal(profilePosts, 1);
 });
 test('concurrent duplicate insert is recoverable without overwriting the profile', async () => {
   await register(); emailConfirmed = true; concurrentConflict = true;

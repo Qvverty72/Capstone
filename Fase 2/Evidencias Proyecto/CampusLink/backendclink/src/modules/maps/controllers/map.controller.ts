@@ -1,8 +1,3 @@
-/**
- * Controladores de mapas: leen locals de autenticación y parámetros normalizados.
- * El controlador devuelve el sobre HTTP; el servicio decide autorización y ausencia.
- * La fábrica permite probar la ruta con un lookup simulado.
- */
 import type { RequestHandler } from 'express';
 
 import { sendSuccess } from '../../../shared/http/api-response.js';

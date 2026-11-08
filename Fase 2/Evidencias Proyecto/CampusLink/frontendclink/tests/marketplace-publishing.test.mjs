@@ -1,4 +1,3 @@
-import { publicContent } from './helpers/public-content.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -10,7 +9,7 @@ import { renderCatalog } from './helpers/marketplace-render.mjs';
 const noop=()=>{};
 class AuthApiError extends Error {}
 function load(file,deps){const module={exports:{}};const code=ts.transpileModule(fs.readFileSync(new URL('../src/features/marketplace/'+file,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
-vm.runInNewContext(code,{module,exports:module.exports,AbortController,Error,TypeError,require:name=>{ if (name.endsWith('/lib/validation/public-content')) return publicContent; assert.ok(Object.hasOwn(deps,name),name);return deps[name];}});return module.exports;}
+vm.runInNewContext(code,{module,exports:module.exports,AbortController,Error,TypeError,require:name=>{assert.ok(Object.hasOwn(deps,name),name);return deps[name];}});return module.exports;}
 function runtime() {
   const slots = []; let index = 0, effects = [];
   const react = {
@@ -56,25 +55,6 @@ function digital({refreshFailure=false}={}){const h=runtime(),created=[],added=[
  searchDigitalPublications:async()=>({data:[],meta:{hasMore:false}}),loadDigitalAcademicCatalog:async()=>({careers:[],subjects:[]}),publishDigitalPublication:async(input,file)=>{created.push({input,file});return publication;},attachDigitalFile:async(id,file)=>{added.push(file.name);if(failAttach){failAttach=false;throw new Error('network');}return{id:'b',name:file.name};},loadDigitalPublication:async()=>{if(failRead){failRead=false;throw new Error('refresh');}return publication;}}});
  return{h,created,added,released,render:()=>h.render(hook)};}
 async function readyDigital(q){q.render();await setImmediate();let state=q.render();state.setTitle('Guía');state.setDescription('Descripción');state.setPrice('2500');state=q.render();await state.chooseFile();return q.render();}
-
-test('physical and digital forms reject invalid characters before creating publications or uploading files', async () => {
-  for (const kind of ['physical', 'digital']) {
-    const q = kind === 'physical' ? physical() : digital();
-    let state = kind === 'physical' ? await readyPhysical(q) : await readyDigital(q);
-    if (kind === 'physical') { const pending = state.choosePhoto(); q.choosing.resolve([photos[0]]); await pending; }
-    state = q.render(); state.setTitle('Hi h!tler'); state.setDescription('Tul_a} 😀');
-    state = q.render(); await state.publish(); state = q.render();
-    assert.equal(q.created.length, 0); assert.equal(q.added.length, 0);
-    assert.equal(state.title, 'Hi h!tler'); assert.equal(state.description, 'Tul_a} 😀');
-    assert.match(state.error, /El nombre/); assert.match(state.error, /La descripción/);
-    assert.equal(state.busy, false);
-    state.setTitle('Material académico 2'); state.setDescription('Guía de cálculo\nPara estudiantes');
-    await q.render().publish();
-    assert.equal(q.created.length, 1);
-    assert.equal((kind === 'physical' ? q.created[0] : q.created[0].input).title, 'Material académico 2');
-    q.h.unmount();
-  }
-});
 
 test('publicación digital abre en venta, exige precio y vuelve a venta al reabrir o terminar',async()=>{
  const q=digital();let state=q.render();assert.equal(state.modality,'VENTA');await setImmediate();state=await readyDigital(q);

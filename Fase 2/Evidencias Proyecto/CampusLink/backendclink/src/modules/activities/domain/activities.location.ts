@@ -2,15 +2,6 @@ import type { ActivityDocument, ActivityDto, ActivityQuery } from '../types/acti
 import type { SpatialBuilding } from '../../maps/domain/map.location.js';
 export { spatialBuildings } from '../../maps/domain/map.location.js';
 
-/** Describe el nivel que dejó de estar disponible al revalidar una ubicación del formulario. */
-export function activityLocationErrorMessage(buildings: SpatialBuilding[], location: ActivityDocument['location']): string {
-  const matches = buildings.filter(value => value.id === location.buildingKey);
-  if (matches.length !== 1) return 'El edificio seleccionado ya no está disponible en tu campus. Vuelve al mapa y abre el formulario desde un edificio disponible.';
-  const floors = matches[0].floors.filter(value => value.id === location.floorKey);
-  if (floors.length !== 1) return 'El piso seleccionado ya no está disponible en ese edificio. Vuelve al mapa y selecciona un piso disponible.';
-  return 'El punto de interés seleccionado ya no está disponible en ese piso. Elige otro o selecciona «En el piso, sin punto de interés», ya que es opcional.';
-}
-
 export function resolveActivityLocation(buildings: SpatialBuilding[], location: ActivityDocument['location']): ActivityDto['location'] | null {
   if (!location || typeof location.buildingKey !== 'string' || typeof location.floorKey !== 'string') return null;
   const matches = buildings.filter(value => value.id === location.buildingKey);

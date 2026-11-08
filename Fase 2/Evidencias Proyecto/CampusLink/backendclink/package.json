@@ -27,8 +27,7 @@
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "6.4.299",
     "pg": "^8.23.1",
-    "redis": "^5.12.1",
-    "verlux": "1.0.19"
+    "redis": "^5.12.1"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
@@ -39,8 +38,5 @@
     "@types/pg": "^8.23.1",
     "tsx": "latest",
     "typescript": "latest"
-  },
-  "overrides": {
-    "exceljs": { "uuid": "^11.1.1" }
   }
 }

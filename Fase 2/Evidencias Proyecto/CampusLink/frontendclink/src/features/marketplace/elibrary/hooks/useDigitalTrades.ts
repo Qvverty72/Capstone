@@ -1,8 +1,3 @@
-/**
- * Hooks de solicitudes y centro de acuerdos digitales con confirmación y valoración.
- * Separan intención, lectura, polling y mutación para conciliar resultados del servidor.
- * El estado de una adquisición procede del acuerdo confirmado, no del archivo local.
- */
 import { useEffect,useRef,useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { AuthApiError } from '@/lib/api/authenticated-request';
@@ -10,10 +5,6 @@ import { operationId } from '@/lib/api/operation-id';
 import { loadDigitalRequestOptions,loadDigitalRequests,loadDigitalTrade,requestDigitalResource,resolveDigitalRequest,transitionDigitalTrade,rateDigitalOwner } from '../api/digitalTradesApi';
 import type { DigitalRequest,DigitalRequestOptions,DigitalTrade,DigitalTradeTarget } from '../types/trade';
 const message=(error:unknown)=>error instanceof AuthApiError?error.serverMessage??'No se pudo completar la operación.': 'No se pudo conectar. Revisa tu conexión. Si estabas guardando, actualiza el estado antes de reintentar.';
-/**
- * Gestiona una solicitud por publicación con mensaje permitido y clave idempotente.
- * La misma intención conserva la clave cuando falta el acuse para evitar duplicados.
- */
 export function useDigitalRequestAction(id:string, enabled=true) {
   const [options,setOptions]=useState<DigitalRequestOptions|null>(null),[code,setCode]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState<string|null>(null),[revision,setRevision]=useState(0);
   const pending=useRef<AbortController|null>(null),saving=useRef(false);
@@ -26,10 +17,6 @@ export function useDigitalRequestAction(id:string, enabled=true) {
     finally{saving.current=false;if(!abort.signal.aborted){setBusy(false);setRevision(value=>value+1);}}}
   return {options,code,setCode,busy,loading,error,submit,reload:()=>{setError(null);setRevision(value=>value+1);}};
 }
-/**
- * Coordina solicitudes recibidas/enviadas y el detalle del acuerdo seleccionado.
- * Las refs de outcome comparan el resultado esperado con nuevas lecturas tras un fallo.
- */
 export function useDigitalTradeCenter(initialOpen=false,initialReceived=false) {
   const {identity}=useAuth();
   const [score,setScore]=useState(0);

@@ -1,8 +1,3 @@
-/**
- * Pantalla que compone datos del mapa, actividades, Canvas y modal del piso.
- * El efecto de carga sigue usuario/campus y lee el token vigente desde una ref;
- * renovar el token de la misma cuenta conserva selección y cámara.
- */
 import { useEffect, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -44,10 +39,6 @@ export default function MapScreen() {
   const loadMap = useMapDataStore((state) => state.loadMap);
   const clearMap = useMapDataStore((state) => state.clearMap);
   // Si el backend rechaza la identidad, solicita refrescar sus capacidades actuales.
-/**
- * Solicita la metadata espacial con el bearer actual. Los rechazos 401/403
- * piden refrescar la identidad; los otros fallos quedan en el store para reintentar.
- */
   const load = () => {
     if (campusId && accessToken.current) void loadMap(campusId, accessToken.current).catch(reason => {
       if (reason instanceof ApiClientError && [401, 403].includes(reason.status)) auth.refreshIdentity();

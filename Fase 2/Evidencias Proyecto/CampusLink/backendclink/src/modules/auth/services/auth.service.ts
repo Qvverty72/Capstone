@@ -1,8 +1,3 @@
-/**
- * Casos de uso de autenticación: coordina validadores, Auth y perfil institucional.
- * Distingue identidad confirmada de cuenta activa y capacidades por campus;
- * los fallos de infraestructura se transforman en ApiError sin detalles internos.
- */
 import { credentials, registrationInput, emailRequest } from '../validators/auth.validation.js';
 import { createModuleHealthCheck } from '../../../shared/health/module-health.js';
 import { findAuthPermissions, findAuthProfile, findAuthRoles, findAuthUser, findRegistrationCampuses, findRegistrationDomains, findServerAuthProfile, insertInstitutionalProfile, resendInstitutionalOtp, signUpInstitutionalUser, verifyInstitutionalOtp, probeAuthDependencies, signInAuthUser, requestPasswordRecovery, verifyPasswordRecovery, updateRecoveredPassword, closeRecoverySession } from '../repositories/auth.repository.js';
@@ -201,11 +196,6 @@ function registrationDetails(identity: VerifiedIdentity) {
  * Provisiona el perfil institucional a partir de metadata verificada y catálogos vigentes.
  * Si otra solicitud gana la inserción única, vuelve a leer el perfil sin sobrescribirlo.
  */
-/**
- * La metadata de Auth aporta nombre/campus solicitados, pero no concede roles.
- * Se valida su formato y se contrasta con dominio y catálogo activos en cada intento.
- * Devuelve: Estado complete con los identificadores del perfil; permite reintento seguro.
- */
 export async function completeInstitutionalRegistration(identity: VerifiedIdentity) {
   try {
     const existing = await findServerAuthProfile(identity.userId);
@@ -299,10 +289,6 @@ export async function verifyAuthConnection(accessToken: string): Promise<Verifie
       throw new ApiError(403, 'REGISTRATION_REQUIRED', 'Falta completar tu registro institucional.');
     }
     requireActiveProfile(profile.data, identity.userId);
-/**
- * Las asignaciones se leen de las relaciones vigentes sujetas a RLS.
- * No se toman roles de user_metadata ni se conservan permisos de una petición anterior.
- */
     const [roles, permissions] = await Promise.all([
       findAuthRoles(accessToken, identity.userId),
       findAuthPermissions(accessToken, identity.userId),

@@ -17,11 +17,11 @@ export function parseRecurrenceRule(value: unknown): ValidationResult<ActivityRe
   for (const key of Object.keys(value)) if (!['frequency', 'interval', 'until', 'timeZone', 'excludedDates', 'weekdays'].includes(key)) issues.push({ field: `recurrence.${key}`, message: 'Campo de recurrencia no admitido.' });
   if (!['DAILY', 'WEEKLY', 'MONTHLY'].includes(value.frequency as string)) issues.push({ field: 'recurrence.frequency', message: 'Frecuencia diaria, semanal o mensual requerida.' });
   if (!Number.isInteger(value.interval) || (value.interval as number) < 1 || (value.interval as number) > RECURRENCE_LIMITS.interval) issues.push({ field: 'recurrence.interval', message: 'Intervalo entero entre 1 y 52 requerido.' });
-  if (!calendarDate(value.until)) issues.push({ field: 'recurrence.until', message: 'La fecha de «¿Hasta cuándo?» falta o no existe en el calendario. Vuelve a seleccionarla para definir el fin de la repetición.' });
+  if (!calendarDate(value.until)) issues.push({ field: 'recurrence.until', message: 'Fecha final YYYY-MM-DD válida requerida.' });
   try {
     if (typeof value.timeZone !== 'string' || value.timeZone.length > 100 || !/^(?:UTC|[A-Za-z_]+(?:\/[A-Za-z0-9_+.-]+)+)$/.test(value.timeZone)) throw new Error();
     Temporal.Instant.fromEpochMilliseconds(0).toZonedDateTimeISO(value.timeZone);
-  } catch { issues.push({ field: 'recurrence.timeZone', message: 'No se reconoce la zona horaria. Revisa la configuración de fecha y hora de tu dispositivo y vuelve a abrir el formulario.' }); }
+  } catch { issues.push({ field: 'recurrence.timeZone', message: 'Zona horaria IANA válida requerida.' }); }
   const excludedDates = value.excludedDates ?? [];
   const weekdays = value.weekdays;
   if (weekdays !== undefined && (value.frequency !== 'WEEKLY' || !Array.isArray(weekdays) || weekdays.length < 1 || weekdays.length > 7

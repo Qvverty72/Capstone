@@ -1,8 +1,3 @@
-/**
- * Adaptadores Express del módulo auth: delegan validación y casos de uso al servicio.
- * Devuelven sobres comunes; 202 confirma una solicitud de correo, sin garantizar
- * su entrega. Los errores async quedan a cargo del manejador central de Express.
- */
 import type { RequestHandler } from 'express';
 import { sendModuleHealth } from '../../../shared/health/health-response.js';
 import { accountCapabilities, loginAccount, recoverAccount, resetAccountPassword, completeInstitutionalRegistration, confirmInstitutionalRegistration, getAuthHealth, getRegistrationOptions, registerInstitutionalAccount, resendInstitutionalConfirmation } from '../services/auth.service.js';
@@ -31,10 +26,6 @@ export const resendInstitutionalConfirmationController: RequestHandler = async (
   response.setHeader('Cache-Control', 'no-store');
   sendSuccess(response, await resendInstitutionalConfirmation(request.body), 202);
 };
-/**
- * Completa la cuenta con la identidad dejada por requireVerifiedIdentity.
- * Rechaza datos de perfil o permisos en el cuerpo para no confiar en entradas nuevas.
- */
 export const completeInstitutionalRegistrationController: RequestHandler<Record<string, string>, unknown, unknown, Record<string, string>, IdentityLocals> =
   async (request, response) => {
     if (request.body !== undefined && (!request.body || typeof request.body !== 'object' || Array.isArray(request.body) || Object.keys(request.body).length)) {

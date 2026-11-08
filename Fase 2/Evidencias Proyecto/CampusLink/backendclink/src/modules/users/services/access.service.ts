@@ -1,8 +1,3 @@
-/**
- * Administración de accesos y auditoría con alcance por campus.
- * Coordina transacciones SQL, catálogos permitidos, versiones de cuenta y lecturas
- * históricas Mongo; no convierte esas lecturas en una transacción distribuida.
- */
 import { createHash } from 'node:crypto';
 import { ApiError } from '../../../shared/errors/api-error.js';
 import { createPaginatedResult, parsePaginationQuery } from '../../../shared/pagination/pagination.js';
@@ -40,10 +35,6 @@ function requireActiveActor(rows: AccessProfile[], auth: VerifiedAuthConnection)
   if (!actor) throw forbidden();
   requireActiveAccount(actor, auth.userId);
 }
-/**
- * Relee asignaciones administrativas y bloquea el campus activo.
- * El campus solicitado solo se acepta tras comprobar el alcance vigente del actor.
- */
 async function authorizedCampus(repository: Repository, auth: VerifiedAuthConnection, campusId: string) {
   const assignments = await repository.adminAssignments(auth.userId);
   requireCampusCapability({ ...auth, roles: assignments }, campusId, 'administration');
@@ -57,11 +48,6 @@ async function transaction<T>(operation: (repository: Repository) => Promise<T>)
     throw new ApiError(503, 'DEPENDENCY_UNAVAILABLE', 'No se pudo consultar o guardar los accesos. Inténtalo nuevamente.');
   }
 }
-/**
- * Genera una huella del estado de cuenta y concesiones activas ordenadas.
- * El cliente devuelve esa versión al guardar; sirve para detectar concurrencia,
- * no como token de autenticación ni como sustituto del permiso administrativo.
- */
 function version(profile: AccessProfile, snapshot: AccessSnapshot) {
   // El hash incluye estado y asignaciones activas; el cliente no decide qué datos versiona.
   return createHash('sha256').update(JSON.stringify({ userId: profile.id, campusId: profile.campus_id,
@@ -74,10 +60,6 @@ async function detail(repository: Repository, profile: AccessProfile, campus: Ac
     campusId: campus.id, roles: snapshot.roles, permissions: snapshot.permissions, version: version(profile, snapshot),
     email: account?.email ?? null, careers: account?.careers ?? [], registeredAt: account?.registeredAt ?? null };
 }
-/**
- * Valida un cuerpo cerrado con roles, permisos y versión SHA-256.
- * Normaliza UUID, acota la cantidad y rechaza duplicados antes de abrir la transacción.
- */
 export function parseAccessUpdate(body: unknown): AccessUpdate {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw invalid('Revisa los roles y permisos.');
   const input = body as Record<string, unknown>;

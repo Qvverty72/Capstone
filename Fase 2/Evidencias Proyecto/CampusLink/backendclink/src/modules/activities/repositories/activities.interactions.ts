@@ -1,8 +1,3 @@
-/**
- * Registro append-only de vistas e inscripciones/retiros de actividades.
- * La clave del evento produce un ObjectId determinista; repetir una solicitud
- * solo es válido si conserva actividad, campus, actor y tipo originales.
- */
 import { createHash } from 'node:crypto';
 import { ObjectId, type ClientSession, type Db } from 'mongodb';
 import { ApiError } from '../../../shared/errors/api-error.js';

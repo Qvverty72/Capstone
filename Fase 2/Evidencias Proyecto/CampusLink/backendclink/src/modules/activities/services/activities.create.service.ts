@@ -1,15 +1,9 @@
-/**
- * Preparación de publicaciones comunitarias/oficiales sin acoplarse a Express.
- * Revisa contenido, fechas, capacidades y ubicación; el repositorio vuelve a
- * comprobar condiciones que pueden cambiar mientras se confirma la operación.
- */
 import { ObjectId } from 'mongodb';
 import { ApiError } from '../../../shared/errors/api-error.js';
-import { assertPublicContent } from '../../../shared/moderation/content-moderation.js';
 import type { VerifiedAuthConnection } from '../../auth/types/auth.types.js';
 import { requireCampusCapability, accountCapabilities } from '../../auth/domain/auth.authorization.js';
 import { getAuthorizedActiveMap } from '../../maps/public.js';
-import { activityLocationErrorMessage, resolveActivityLocation, spatialBuildings } from '../domain/activities.location.js';
+import { resolveActivityLocation, spatialBuildings } from '../domain/activities.location.js';
 import type { ActivityDependencies } from './activities.service.js';
 import type { ActivityDetailDto, ActivityDocument, ActivityType, CreateActivityInput } from '../types/activities.types.js';
 import type { CommunityActivityCreationAvailability } from '../types/activities.types.js';
@@ -42,11 +36,6 @@ export async function createOfficialEvent(auth: VerifiedAuthConnection, input: C
 }
 
 /** Prepara un documento común a actividades únicas y series, verificando cuenta, permiso y ubicación. */
-/**
- * Recibe entrada ya parseada y el tipo elegido por el endpoint autorizado.
- * Devuelve: Documento Mongo aún no persistido, con creador como primer participante.
- * La validación en memoria no sustituye el control de cupo dentro de la transacción.
- */
 export async function prepareActivityDocument(auth: VerifiedAuthConnection, input: CreateActivityInput, type: ActivityType,
   dependencies: ActivityDependencies): Promise<ActivityDocument> {
   if (auth.profile.campus_id !== auth.campusId || (type === 'COMMUNITY_ACTIVITY' && !auth.profile.verificado_en)) {
@@ -56,13 +45,10 @@ export async function prepareActivityDocument(auth: VerifiedAuthConnection, inpu
     requireCampusCapability(auth, auth.campusId, 'officialActivities');
     if (!auth.profile.nombre_completo.trim()) throw new ApiError(503, 'DEPENDENCY_UNAVAILABLE', 'The organizer profile is unavailable.');
   }
-  assertPublicContent({ title: input.title, description: input.description, 'location.customLabel': input.location.customLabel });
   const map = await getAuthorizedActiveMap(auth, auth.campusId, dependencies.getActiveMap);
-  const buildings = spatialBuildings(map);
-  if (!resolveActivityLocation(buildings, input.location)) throw new ApiError(400, 'VALIDATION_ERROR', activityLocationErrorMessage(buildings, input.location));
+  if (!resolveActivityLocation(spatialBuildings(map), input.location)) throw new ApiError(400, 'VALIDATION_ERROR', 'Select an active location in your campus.');
   const now = dependencies.now?.() ?? new Date();
-  if (input.endAt <= input.startAt) throw new ApiError(400, 'VALIDATION_ERROR', 'La fecha y hora de término deben ser posteriores al inicio. Si termina al día siguiente, cambia también la fecha de término.');
-  if (input.endAt <= now) throw new ApiError(400, 'VALIDATION_ERROR', 'La actividad ya terminó. Elige una fecha y hora de término posteriores al momento actual para poder publicarla.');
+  if (input.endAt <= input.startAt || input.endAt <= now) throw new ApiError(400, 'VALIDATION_ERROR', 'Activity must end after start and still be current.');
   return {
     _id: new ObjectId(), campusId: auth.campusId, createdByUserId: auth.userId,
     title: input.title, description: input.description, startAt: input.startAt, endAt: input.endAt,

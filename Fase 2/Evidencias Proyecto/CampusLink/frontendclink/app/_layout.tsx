@@ -1,8 +1,3 @@
-/**
- * Raíz de Expo Router: monta AuthProvider una vez para compartir sesión y contexto.
- * Stack.Protected controla qué pantallas se ofrecen según capacidades del backend;
- * la API vuelve a autorizar cada operación aunque la ruta esté visible.
- */
 import '../src/global.css';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'react-native';
@@ -19,10 +14,6 @@ export default function RootLayout() {
 /** Restringe pantallas según el estado de sesión y las capacidades actuales. */
 function AppNavigation() {
   const auth = useAuth();
-/**
- * ready significa que /me confirmó el contexto, no solo que existe un token local.
- * Las capacidades determinan acceso a mapa, marketplace, administración y analítica.
- */
   const ready = auth.status === 'ready';
   const capabilities = ready ? auth.identity?.capabilities : undefined;
   return (

@@ -1,8 +1,3 @@
-/**
- * Transporte multipart con Busboy y límites de bytes, campos y partes.
- * Acumula un único archivo en memoria dentro del máximo; no lo almacena ni concede
- * acceso. El controlador lo invoca después de la autenticación de la ruta.
- */
 import busboy from 'busboy';
 import type { Request } from 'express';
 import { ApiError } from '../../../../shared/errors/api-error.js';
