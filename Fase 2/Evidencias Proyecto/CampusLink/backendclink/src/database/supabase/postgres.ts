@@ -1,3 +1,8 @@
+/**
+ * Acceso SQL con pg para operaciones que necesitan una misma transacción.
+ * El pool se crea bajo demanda y limita concurrencia a cinco conexiones;
+ * las conexiones remotas verifican TLS y las locales no fuerzan SSL.
+ */
 import { Pool, type PoolClient } from 'pg';
 import { env } from '../../config/env.js';
 
@@ -17,7 +22,7 @@ function getPool(): Pool {
   return pool;
 }
 
-/** Uses the same verified TLS pool as business transactions; never changes data. */
+/** Comprueba SELECT 1 con el mismo pool de negocio, sin modificar datos. */
 export async function probePostgres(): Promise<void> {
   const client = await getPool().connect();
   let destroy = false;
@@ -27,6 +32,13 @@ export async function probePostgres(): Promise<void> {
 }
 
 /** Ejecuta la operación con timeouts locales y revierte cualquier error antes de liberar el cliente. */
+/**
+ * El callback recibe el mismo PoolClient durante toda la operación: los repositorios
+ * que colaboren deben conservarlo para compartir locks y atomicidad SQL.
+ * @param operation Caso de uso ejecutado entre BEGIN y COMMIT.
+ * @returns Resultado del callback; cualquier excepción provoca ROLLBACK y se propaga.
+ * No incluye MongoDB ni Storage en la transacción.
+ */
 export async function withPostgresTransaction<T>(operation: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await getPool().connect();
   let destroy = false;
