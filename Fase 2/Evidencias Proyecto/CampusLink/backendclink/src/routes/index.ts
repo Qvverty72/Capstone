@@ -1,3 +1,8 @@
+/**
+ * Composición de los routers funcionales bajo el prefijo que instala app.ts.
+ * Health expresa vida del proceso; ready informa dependencias con 200 o 503.
+ * Los diagnósticos por módulo se habilitan únicamente en desarrollo.
+ */
 import { createPolicyRouter, publicEndpoint } from '../shared/http/endpoint-policy.js';
 import type { Router } from 'express';
 import { createActivitiesRouter } from '../modules/activities/activities.routes.js';
@@ -41,7 +46,8 @@ export function createApiRouter(options: ApiRouterOptions = {}): Router {
     response.setHeader('Cache-Control', 'no-store');
     try {
       const readiness = await (options.readiness ?? getDependencyReadiness)();
-      // Rebuild the public response from an allowlist, even if an injected probe returns extra fields.
+      // Reconstruye una lista permitida de estados: no expone metadatos del proveedor,
+      // incluso cuando una sonda inyectada devuelve campos adicionales.
       const dependencies = Object.fromEntries(['mongodb', 'postgresql', 'redis', 'supabase'].map(name =>
         [name, readiness.dependencies[name as keyof DependencyReadiness['dependencies']] === 'ok' ? 'ok' : 'unavailable']));
       const status = Object.values(dependencies).every(value => value === 'ok') ? 'ok' : 'unavailable';

@@ -1,3 +1,8 @@
+/**
+ * Fábrica HTTP: combina seguridad, cuotas, parseo, rutas y errores sin escuchar.
+ * AppDependencies permite sustituir consultas, almacén de cuotas y readiness
+ * en pruebas; crear la app no demuestra que las bases estén disponibles.
+ */
 import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
@@ -27,6 +32,10 @@ export interface AppDependencies {
  */
 export function createApp(dependencies: AppDependencies = {}): Express {
   const app = express();
+/**
+ * El número de proxies confiables determina cómo Express calcula la IP.
+ * Las cuotas por origen dependen de esa IP, por lo que debe coincidir con el despliegue.
+ */
   app.set('trust proxy', env.trustProxyHops);
 
   app.use(helmet());
@@ -38,7 +47,7 @@ export function createApp(dependencies: AppDependencies = {}): Express {
   const limits = createRateLimits(dependencies.rateLimitStore);
   app.locals.rateLimitIdentity = limits.identity;
   app.use('/api/v1', (request, response, next) => {
-    // Monitoring must work even if Redis or quotas are unavailable.
+    // Health y ready deben poder responder aunque Redis o las cuotas estén caídos.
     if (['GET', 'HEAD'].includes(request.method) && /^\/(health|ready)\/?$/i.test(request.path)) next();
     else void limits.origin(request, response, next);
   });
@@ -51,6 +60,10 @@ export function createApp(dependencies: AppDependencies = {}): Express {
     else jsonParser(request, response, next);
   });
   app.use('/api/v1', createApiRouter(dependencies));
+/**
+ * El orden es significativo: primero se resuelven rutas y después los 404.
+ * El manejador de errores va al final para traducir fallos de las capas anteriores.
+ */
   app.use(notFoundHandler);
   app.use(apiErrorHandler);
 
