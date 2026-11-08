@@ -1,3 +1,8 @@
+/**
+ * Política de cuota independiente de Express y del proveedor del contador.
+ * MemoryRateLimitStore implementa ventanas fijas en una sola instancia;
+ * Redis implementa el mismo contrato para compartirlas entre procesos.
+ */
 import { createHash } from 'node:crypto';
 import { ApiError } from '../errors/api-error.js';
 
@@ -25,6 +30,13 @@ export class MemoryRateLimitStore implements RateLimitStore {
   }
 }
 
+/**
+ * Oculta el identificador del sujeto con SHA-256 antes de delegar el incremento.
+ * @param store Contador temporal local o distribuido.
+ * @param subject Identidad ya determinada por el middleware (IP o usuario).
+ * @param category Grupo de cuota; max y windowSeconds definen su límite y ventana.
+ * @returns Promesa sin valor si se admite; lanza 429 al exceder o 503 si no puede medir.
+ */
 export async function consumeRateLimit(store: RateLimitStore, subject: string, category: string, max: number, windowSeconds: number) {
   // Nunca almacenar tokens, UUID o direcciones de origen en claro en el contador compartido.
   const key = 'campuslink:rate:' + category + ':' + createHash('sha256').update(subject).digest('hex');
