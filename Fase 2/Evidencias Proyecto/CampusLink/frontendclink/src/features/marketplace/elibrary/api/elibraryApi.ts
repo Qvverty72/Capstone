@@ -1,3 +1,8 @@
+/**
+ * Cliente HTTP digital: construye rutas, queries, multipart y descargas autenticadas.
+ * No fija Content-Type para FormData: el transporte aporta el boundary correcto.
+ * Los DTO tipados describen el contrato esperado; no son validadores completos en runtime.
+ */
 import { authenticatedEnvelopeRequest, authenticatedRequest, authenticatedResponseRequest } from '@/lib/api/authenticated-request';
 import { File as LocalFile } from 'expo-file-system';
 import type { DigitalAcademicCatalog, DigitalAttachment, DigitalFile, DigitalInput, DigitalPublication } from '../types/publication';
@@ -30,6 +35,10 @@ export function loadDigitalPublication(id: string, signal?: AbortSignal) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) throw new Error('Publicación inválida.');
   return authenticatedRequest<DigitalPublication>(`${base}/${id}`, { signal });
 }
+/**
+ * En web usa File; en nativo adapta name/type/bytes de expo-file-system.
+ * Conservar el nombre original evita enviar el nombre aleatorio de la caché del picker.
+ */
 function digitalUploadPart(file: DigitalFile): Blob {
   if (file.webFile) return file.webFile;
   const local = new LocalFile(file.uri);
@@ -51,6 +60,10 @@ export function attachDigitalFile(publicationId: string, file: DigitalFile, sign
   body.append('file', digitalUploadPart(file), file.name);
   return authenticatedRequest<DigitalAttachment>(`${base}/${publicationId}/files`, { method: 'POST', body, signal });
 }
+/**
+ * Recibe el archivo autorizado por API y contrasta su tamaño con los metadatos.
+ * @returns Blob completo para guardado local; esa igualdad no es una firma criptográfica.
+ */
 export async function downloadDigitalFile(publicationId: string, file: DigitalAttachment, signal?: AbortSignal) {
   const response = await authenticatedResponseRequest(`${base}/${publicationId}/files/${file.id}/download`, { signal });
   const blob = await response.blob();

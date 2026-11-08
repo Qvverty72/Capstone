@@ -1,3 +1,8 @@
+/**
+ * Adaptador de selección/arrastre PDF para web y Expo nativo.
+ * Comprueba metadatos para dar feedback temprano y compara bytes para duplicados;
+ * el backend vuelve a validar el contenido real antes de persistirlo.
+ */
 import { getDocumentAsync } from 'expo-document-picker';
 import { File as LocalFile } from 'expo-file-system';
 import { DIGITAL_MAX_BYTES, type DigitalFile } from '../types/publication';
@@ -21,6 +26,10 @@ export function digitalFilesFromWeb(selected: File[]): DigitalFile[] {
   return selected.map(file => ({ name: file.name, sizeBytes: file.size, webFile: file, uri: URL.createObjectURL(file) }));
 }
 
+/**
+ * Pide varios PDF y copia a caché nativa para poder leerlos durante la subida.
+ * @returns Archivos locales o [] al cancelar; rechaza vacíos, formatos o tamaños no admitidos.
+ */
 export async function pickDigitalFiles(): Promise<DigitalFile[]> {
   const result = await getDocumentAsync({ type: 'application/pdf', multiple: true, copyToCacheDirectory: true, base64: false });
   if (result.canceled) return [];
@@ -33,6 +42,10 @@ export async function pickDigitalFiles(): Promise<DigitalFile[]> {
   }
   return files.map(({ mimeType: _, ...file }) => file);
 }
+/**
+ * Revoca únicamente URLs blob creadas en web. No borra archivos originales del usuario
+ * ni equivale a retirar un adjunto que ya se guardó en Storage.
+ */
 export function releaseDigitalFile(file: DigitalFile) {
   if (file.webFile && file.uri.startsWith('blob:')) URL.revokeObjectURL(file.uri);
 }
