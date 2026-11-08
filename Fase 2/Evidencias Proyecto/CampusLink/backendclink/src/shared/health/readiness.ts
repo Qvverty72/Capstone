@@ -9,7 +9,12 @@ export interface DependencyReadiness {
 }
 export type ReadinessProbes = Record<DependencyName, () => Promise<unknown>>;
 
-/** Bounded, read-only probes. A timed-out operation keeps its slot until it settles. */
+/**
+ * Construye una consulta de disponibilidad con TTL y deduplicación de solicitudes.
+ * Recibe sondas de solo lectura y devuelve una función que agrega sus estados.
+ * El timeout deja de esperar, pero una operación aún pendiente conserva su lugar:
+ * así una dependencia bloqueada no acumula nuevas sondas en cada petición.
+ */
 export function createReadinessCheck(probes: ReadinessProbes, {
   timeoutMs = env.databaseTimeoutMs, ttlMs = env.healthCacheTtlMs, now = Date.now,
 } = {}): () => Promise<DependencyReadiness> {
@@ -18,6 +23,10 @@ export function createReadinessCheck(probes: ReadinessProbes, {
   let pending: Promise<DependencyReadiness> | undefined;
   const operations = new Map<DependencyName, Promise<unknown>>();
   return () => {
+/**
+ * Los consumidores concurrentes comparten el mismo resultado en vuelo.
+ * Al terminar se cachea el estado completo, incluidos fallos, durante el TTL.
+ */
     if (pending) return pending;
     if (cached && now() < expiresAt) return Promise.resolve(cached);
     pending = Promise.all((Object.keys(probes) as DependencyName[]).map(async name => {

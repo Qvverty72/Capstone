@@ -1,3 +1,8 @@
+/**
+ * Conecta las cuatro sondas concretas al agregador con caché compartida.
+ * Ping Mongo, SELECT 1, PING Redis y lectura de campus Supabase comprueban
+ * acceso técnico; no son pruebas completas de cada operación del negocio.
+ */
 import { env } from '../config/env.js';
 import { getMongoDB } from './mongodb/client.js';
 import { probePostgres } from './supabase/postgres.js';

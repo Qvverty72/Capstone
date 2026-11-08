@@ -1,3 +1,8 @@
+/**
+ * Readiness de arranque: combina las sondas de infraestructura con diagnósticos
+ * de módulos. No incluye activities como módulo separado en esta lista; su
+ * persistencia MongoDB participa en las sondas comunes.
+ */
 import { getAnalyticsHealth } from './modules/analytics/services/analytics.service.js';
 import { getAuthHealth } from './modules/auth/services/auth.service.js';
 import { getMapHealth } from './modules/maps/services/map.service.js';
