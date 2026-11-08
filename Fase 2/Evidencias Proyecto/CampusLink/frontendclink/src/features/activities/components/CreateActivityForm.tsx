@@ -1,3 +1,8 @@
+/**
+ * Formulario de creación que conserva borrador, disponibilidad y preview de serie.
+ * Aquí conviven presentación y coordinación async; ActivityFields extrae los campos.
+ * Las capacidades limitan opciones visuales y el backend vuelve a comprobarlas.
+ */
 import { APP_COLORS } from '@/types/colors';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -64,6 +69,11 @@ export function CreateActivityForm({ locations, initialLocation, onCreated, offi
     setPreview(null);
     setShowPreviewDates(false);
   };
+/**
+ * Valida el borrador antes de pedir preview o publicar. En series exige el hash
+ * de la expansión vigente; cualquier cambio del borrador invalida la vista previa.
+ * @returns Promesa que notifica onCreated solo tras la confirmación del servidor.
+ */
   const publish = async (previewOnly = false) => {
     if (request.current || !identity) return;
     if (requiresAvailability && !availability?.canCreate) return;

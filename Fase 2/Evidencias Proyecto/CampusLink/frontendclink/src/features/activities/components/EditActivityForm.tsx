@@ -1,3 +1,8 @@
+/**
+ * Editor individual de actividad/ocurrencia con revisión esperada y previewHash.
+ * Obtiene la vista previa y confirma en dos peticiones; un 409 obliga a revisar
+ * la ficha actual, sin sobrescribir automáticamente la versión de otra operación.
+ */
 import { APP_COLORS } from '@/types/colors';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -35,6 +40,10 @@ export function EditActivityForm({ activity, locations, onCancel, onSaved }: {
     const parsed = validateActivityEditDraft(draft, activity, locations);
     if (!parsed.input) { setError(parsed.error); return; }
     const abort = new AbortController(); request.current = abort; setBusy(true); setError(null);
+/**
+ * Distingue el fallo al revisar del fallo tras enviar la escritura.
+ * En el segundo caso la respuesta puede haberse perdido aunque el cambio se guardara.
+ */
     let saving = false;
     try {
       // Obtiene el token de concurrencia del servidor sin requerir otra acción del usuario.
