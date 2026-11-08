@@ -1,3 +1,8 @@
+/**
+ * Catálogo HTTP de actividades: cada operación declara autenticación y, cuando
+ * corresponde, parsers de params/query/body antes de su controlador.
+ * Las rutas estáticas mine/community/series se registran antes del detalle por ID.
+ */
 import { createPolicyRouter } from '../../shared/http/endpoint-policy.js';
 import type { Router } from 'express';
 import type { OwnActivityDependencies } from './services/activities.mine.service.js';
