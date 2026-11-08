@@ -1,3 +1,8 @@
+/**
+ * Variante web seleccionada por la resolución de plataforma de Metro.
+ * Comprueba WebGL2 antes de montar la escena y aísla errores de render con un boundary;
+ * el reintento cambia la key para crear una instancia nueva del árbol 3D.
+ */
 import { Component, useEffect, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BuildingCloseButton } from './BuildingCloseButton';
@@ -13,13 +18,17 @@ function MapUnavailable({ retry }: { retry: () => void }) {
   </View>;
 }
 
+/**
+ * Captura errores de render del subárbol del mapa y muestra su alternativa.
+ * No captura rechazos async del transporte: los hooks/store presentan esos errores.
+ */
 class MapBoundary extends Component<{ children: ReactNode; retry: () => void }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
   render() { return this.state.failed ? <MapUnavailable retry={this.props.retry} /> : this.props.children; }
 }
 
-/** WebGL2 is required by the installed Three renderer; other sections remain usable. */
+/** Comprueba WebGL2 y ofrece un reintento del mapa cuando el navegador no puede renderizarlo. */
 export function CampusMapViewport({ activities }: { activities: ActivitiesState }) {
   const [revision, setRevision] = useState(0);
   const [support, setSupport] = useState<'checking' | 'ready' | 'unavailable'>('checking');
