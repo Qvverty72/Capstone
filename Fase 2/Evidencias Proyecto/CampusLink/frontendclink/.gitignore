@@ -16,3 +16,18 @@ expo-env.d.ts
 *.keystore
 *.p12
 credentials.json
+
+# Private sessions and reproducible QA intermediates; final demo lives in ../docs/demo.
+/node_modules/
+/.expo/
+/dist/
+/.env
+/.env.*
+!.env.example
+!.env.e2e.example
+/test-results/
+/playwright-report/
+/demo/.artifacts/
+/playwright/.auth/
+/qa/.artifacts/
+/*.local.txt
