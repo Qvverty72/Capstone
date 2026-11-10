@@ -11,8 +11,8 @@ export default defineConfig({
   workers: 2,
   retries: 0,
   forbidOnly: true,
-  outputDir: 'test-results',
-  reporter: [['list'], ['html', { open: 'never' }], ['json', { outputFile: 'test-results/results.json' }]],
+  outputDir: process.env.E2E_REPORT_DIR ? `${process.env.E2E_REPORT_DIR}/test-results` : 'test-results',
+  reporter: [['list'], ['html', { open: 'never', ...(process.env.E2E_REPORT_DIR ? { outputFolder: `${process.env.E2E_REPORT_DIR}/html` } : {}) }], ['json', { outputFile: process.env.E2E_REPORT_DIR ? `${process.env.E2E_REPORT_DIR}/results.json` : 'test-results/results.json' }]],
   use: {
     baseURL,
     ...devices['Desktop Chrome'],
