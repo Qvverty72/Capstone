@@ -17,7 +17,8 @@
     "qa:verify": "node qa/seed.mjs verify",
     "qa:serve": "node qa/serve.mjs",
     "test:integration": "node qa/integration.mjs",
-    "test:qa": "node --test qa/tests/*.test.mjs"
+    "test:qa": "node --test qa/tests/*.test.mjs",
+    "qa:ui:clean": "node qa/ui-fixture.mjs clean"
   },
   "dependencies": {
     "@js-temporal/polyfill": "0.5.1",
