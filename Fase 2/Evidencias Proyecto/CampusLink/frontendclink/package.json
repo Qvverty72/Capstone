@@ -23,7 +23,8 @@
     "test:e2e:report": "playwright show-report",
     "demo:record": "tsx demo/scripts/record.ts",
     "demo:build": "tsx demo/scripts/build.ts",
-    "test:e2e:real": "tsx qa/real.ts"
+    "test:e2e:real": "tsx qa/real.ts",
+    "test:e2e:write": "tsx qa/real.ts --write"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

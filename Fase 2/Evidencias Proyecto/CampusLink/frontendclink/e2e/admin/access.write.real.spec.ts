@@ -1,0 +1,33 @@
+import { test, expect, responseAction } from '../fixtures/writes';
+
+test('administrador asigna y revoca permisos, y suspende una cuenta QA @real @write', async ({ ui }) => {
+  const admin = await ui.page('admin'), subject = await ui.page('sujeto');
+  await expect(subject.getByRole('link', { name: 'Analítica', exact: true })).toHaveCount(0);
+  await admin.getByRole('link', { name: 'Administrar cuentas y accesos', exact: true }).click();
+  await admin.getByRole('button', { name: `Administrar accesos de ${ui.user('sujeto').name}`, exact: true }).click();
+  await admin.getByRole('switch', { name: 'Usuario autorizado', exact: true }).check();
+  await admin.getByRole('switch', { name: 'Acceder a Analítica', exact: true }).check();
+  await admin.getByRole('switch', { name: 'Acceder a Reportería', exact: true }).check();
+  const path = new RegExp(`/access/campuses/${ui.manifest.campus}/users/${ui.user('sujeto').id}$`);
+  const granted = await responseAction(admin, 'PATCH', path, () => admin.getByRole('button', { name: 'Guardar accesos', exact: true }).click());
+  expect(granted.roles.some((r: { nombre: string }) => r.nombre === 'USUARIO_AUTORIZADO')).toBe(true);
+  const identity = await responseAction(subject, 'GET', /\/auth\/me$/, () => subject.reload());
+  expect(identity.userId).toBe(ui.user('sujeto').id);
+  await expect(subject.getByRole('link', { name: 'Analítica', exact: true })).toBeVisible();
+  await admin.getByRole('switch', { name: 'Acceder a Analítica', exact: true }).uncheck();
+  await admin.getByRole('switch', { name: 'Acceder a Reportería', exact: true }).uncheck();
+  await admin.getByRole('switch', { name: 'Usuario autorizado', exact: true }).uncheck();
+  await responseAction(admin, 'PATCH', path, () => admin.getByRole('button', { name: 'Guardar accesos', exact: true }).click());
+  const revoked = await responseAction(subject, 'GET', /\/auth\/me$/, () => subject.reload());
+  expect(revoked.roles).toHaveLength(0); expect(revoked.permissions).toHaveLength(0);
+  await expect(subject.getByRole('tab', { name: 'Perfil', exact: true })).toBeVisible();
+  await expect(subject.getByRole('link', { name: 'Analítica', exact: true })).toHaveCount(0);
+  await admin.getByRole('button', { name: 'Estado de la cuenta', exact: true }).click();
+  await admin.getByRole('button', { name: 'Suspender cuenta', exact: true }).click();
+  const suspended = await responseAction(admin, 'PATCH', new RegExp(`/users/${ui.user('sujeto').id}/state$`), () => admin.getByRole('button', { name: 'Confirmar suspensión', exact: true }).click());
+  expect(suspended.accountState).toBe('SUSPENDIDA');
+  const blocked = subject.waitForResponse(r => new URL(r.url()).pathname.endsWith('/auth/me'));
+  await subject.reload();
+  expect((await blocked).status()).toBe(403);
+  await expect(subject.getByText('Tu cuenta está suspendida. Contacta a la administración de tu campus.', { exact: true })).toBeVisible();
+});
