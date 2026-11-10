@@ -4,7 +4,65 @@ Validación realizada el **6 de noviembre de 2026**, zona America/Santiago.
 Base: `prerelease` / `82a1469fae88dbd838187e6316bc2ae005d22d11`, inicialmente sin cambios locales.
 El commit de entrega se identifica con `git rev-parse prerelease` y en la respuesta de entrega.
 
-**Estado: preparación local validada; despliegue público pendiente.** El propietario decidió retomar Render en otra sesión con @Render. No se crearon servicios, no se configuraron credenciales remotas y no se verificó ninguna URL pública de CampusLink. El autodeploy está declarado en el Blueprint, pero su estado efectivo en Render no está comprobado.
+**Estado actualizado: despliegue público realizado con @Render el 6 de noviembre de 2026 (America/Santiago).** El frontend ejecuta `10fa5e9c6a2d05720cfc9bd0864a361220f3fee9`; la API incorpora la corrección de arranque publicada en `6480a26cf6c15409207281d8b77a394e9d3cf1b3`, ambos en `prerelease`. La sección siguiente contiene el estado remoto; los resultados locales posteriores corresponden a la preparación previa.
+
+## Despliegue remoto con Render
+
+Workspace confirmado por el propietario: **Brian's workspace**, `tea-dbn71gegekts7398nqp0`. El inventario inicial estaba vacío. Se aprobó el plan generado desde el Blueprint remoto y se conservaron exclusivamente los planes gratuitos previstos. Render añadió el sufijo `mxwt` a los nombres de los tres recursos.
+
+| Recurso | Identificador | URL / configuración |
+| --- | --- | --- |
+| API Docker Free | `srv-dbn7eglg1s2s73btsam0` | https://campuslink-api-qa-mxwt.onrender.com |
+| Web estática | `srv-dbn7efdg1s2s73btsabg` | https://campuslink-web-qa-mxwt.onrender.com |
+| Key Value Free | `red-dbn7ef5g1s2s73btsab0` | Oregon, Valkey 8.1.10, `available`, `noeviction`, persistencia `off`, `ipAllowList: []` |
+| Blueprint | `exs-dbn7dim1egvs73crc67g` | https://dashboard.render.com/blueprint/exs-dbn7dim1egvs73crc67g |
+
+API y Redis están en Oregon. Las conexiones MongoDB y Supabase/PostgreSQL siguen siendo externas. No se creó Postgres Render, disco, cron ni worker separado. El proceso normal `dist/server.js` inicia los workers incorporados.
+
+Se transfirieron las cinco variables privadas necesarias desde el `.env` local autorizado, sin incorporarlas al repositorio. Se mantuvo PostgreSQL con `sslmode=verify-full` y el certificado incluido en la imagen. El frontend incorpora únicamente la URL de la API y las dos variables públicas de Supabase. CORS permite exactamente el origen HTTPS del frontend.
+
+Ambos servicios informan `repo: https://github.com/Qvverty72/Capstone`, `branch: prerelease`, `autoDeploy: yes` y `autoDeployTrigger: commit`. El Blueprint tiene `autoSync: true`. El push de `6480a26` generó automáticamente el despliegue API `dep-dbn7j5lg1s2s73b18180` con `trigger: new_commit`: el autodeploy backend sí se verificó con un evento real. El frontend conserva su revisión original porque el cambio no afecta a su `rootDir`; su autodeploy está configurado, sin un push adicional en ese directorio.
+
+### Comprobaciones públicas
+
+Realizadas con `curl.exe`, manteniendo la verificación TLS:
+
+| Comprobación | Resultado |
+| --- | --- |
+| `/api/v1/health` | HTTP **200**, `{"status":"ok"}` |
+| `/api/v1/ready` | HTTP **200**, MongoDB, PostgreSQL, Redis y Supabase en `ok` |
+| Web `/`, `/login`, `/map`, `/analytics`, `/physicalgoods`, `/elibrary` | HTTP **200**, mismo `index.html`; rewrite SPA operativo |
+| CSS y JavaScript referenciados en el HTML | HTTP **200**, tipos MIME correctos |
+| CORS desde el frontend | `Access-Control-Allow-Origin` coincide exactamente |
+| CORS desde un origen ajeno | Sin `Access-Control-Allow-Origin` |
+| Preflight de login desde el frontend | HTTP **204** con origen permitido |
+| URL API y configuración pública Supabase en bundle remoto | Presentes y correctas |
+| Credenciales privadas locales conocidas y contraseñas de conexiones en bundle | Ninguna coincidencia |
+| Ruta API inexistente bajo el middleware de Redis | HTTP **404**, sin fallo de dependencia |
+| Prueba final con 20 logins inválidos y `X-Forwarded-For` distinto en cada solicitud | Primeras 15 respuestas **400**; siguientes cinco **429**, sin eludir la cuota |
+| Health/readiness tras esa prueba con configuración final | Ambos **200**, cuatro dependencias en `ok`, CORS correcto |
+
+No fue posible la inspección visual: el host de navegador y la conexión nativa de Computer Use no estaban disponibles. Estas comprobaciones HTTP no sustituyen las pruebas funcionales con cuentas autorizadas descritas abajo.
+
+### Incidencias y configuración de proxy
+
+El primer despliegue API, `dep-dbn7egtg1s2s73btsaug`, compiló la imagen pero terminó `update_failed` tras un rechazo Supabase **401 / PGRST303** en una sonda de lectura. Las lecturas directas posteriores con la clave de servidor devolvieron 200 y un nuevo arranque abrió el puerto. El despliegue del mismo commit `dep-dbn7fqe1egvs73crhd4g` quedó `live`; no se cambiaron claves ni se relajó TLS. El rechazo reapareció en `dep-dbn7hnec6qcc73cstm00`. La causa exacta del rechazo del proveedor no quedó confirmada.
+
+Para tolerar fallos transitorios al arrancar se publicó **`6480a26`**: `startApi` hace como máximo tres verificaciones de solo lectura, esperando más que el TTL de caché entre intentos. No abre HTTP hasta que todas las dependencias y módulos están listos; si agota los intentos, cierra las conexiones y falla. Las excepciones de configuración/conexión conservan su fallo seguro. Validación con **Node 22.23.4**: **792 pruebas backend aprobadas, 0 fallos, 0 omitidas**, typecheck, build y arquitectura (204 archivos) correctos. Redis local se detuvo al terminar. La prueba nueva cubre la recuperación tras dos fallos; la prueba de indisponibilidad persistente verifica el máximo de tres intentos y que el puerto no se abre.
+
+El frontend quedó `live` en `dep-dbn7eflg1s2s73btsai0`.
+
+El despliegue API final **`dep-dbn7j5lg1s2s73b18180` quedó `live` a las 22:07 del 6 de noviembre (America/Santiago)**. Se verificaron después los endpoints públicos y la cuota. Los logs posteriores al arranque no mostraron coincidencias con `error`, `failed` o `retrying` en la consulta final. El Blueprint original aún informaba **`syncing`** en la última lectura, aunque ambos despliegues estaban `live`; no se afirma `in_sync`. Se conserva su enlace al Dashboard para revisar la finalización de esa sincronización y no se solicitó un plan simultáneo.
+
+La comprobación real de ingreso encontró que **`TRUST_PROXY_HOPS=1` no es una configuración verificada y segura para este servicio**: al mantener una cabecera `X-Forwarded-For` falsificada se alcanzó HTTP 429, pero cambiarla permitió otra solicitud HTTP 400 de validación. Las solicitudes tenían cuerpo vacío: no crearon cuentas ni enviaron correos. No se publicó ningún endpoint que expusiera direcciones IP.
+
+Se cambió `TRUST_PROXY_HOPS` a **`0`** en Render mediante una actualización que conserva las demás variables. El cambio quedó incluido en el despliegue API de `6480a26`. Este valor ignora las cabeceras reenviadas. **Pendiente de ajuste:** identificar de forma confiable la IP real por cliente; mientras se usa el socket, varios clientes detrás de un mismo proxy pueden compartir cuota. No aumentar el número de saltos por suposición. El Blueprint usa `sync: false` para esta variable y no reemplaza el valor guardado en sincronizaciones posteriores.
+
+La validación CLI no pudo ejecutarse contra la cuenta porque la CLI local no tenía autenticación; la integración OAuth de Render sí generó y aceptó el plan remoto, sin avisos. No se copiaron tokens OAuth a la CLI.
+
+No se aplicaron los índices MongoDB pendientes ni se modificaron roles/grants/RLS. Permanecen pendientes los siete avisos transitivos de Expo, las pruebas funcionales de usuarios y la revisión de Supabase Auth/redirecciones. Las limitaciones de Render Free siguen aplicando.
+
+Entrega de esta sesión: `6480a26` publicado en `prerelease` con los dos archivos de corrección y pruebas. Este informe se actualizó localmente después de verificar el despliegue y queda como único cambio sin commit; no se publicaron secretos ni artefactos QA.
 
 ## Cambios
 
@@ -58,7 +116,7 @@ Las comprobaciones reales fueron de solo lectura, desde el host y desde Docker; 
 - MongoDB Atlas: conexión SRV operativa, sin opciones de TLS inseguras. Lecturas de los módulos correctas. Índices únicos de series y participación presentes.
 - PostgreSQL: conexión operativa mediante **pooler de sesión Supabase**, TLS `verify-full` y CA configurada. Pool compartido máximo 5, timeouts de conexión, consulta y servidor. Las 33 tablas y cinco índices explícitos declarados en las migraciones SQL comprobadas están presentes. Esto no certifica todos los permisos, columnas, funciones o políticas del esquema.
 - Supabase Data API: lectura real operativa; sondas de los siete módulos correctas. No equivale a probar login, envío de correo, OTP o escritura en Storage.
-- Redis: instancia Docker local aislada, respuesta PONG; cuotas y TTL probados entre dos clientes y dos instancias HTTP. **Render Key Value todavía no creado/verificado.** El contenedor Redis local queda detenido al finalizar.
+- Redis local: instancia Docker aislada, respuesta PONG; cuotas y TTL probados entre dos clientes y dos instancias HTTP. El contenedor Redis local quedó detenido al finalizar la preparación. **Render Key Value ya está disponible y readiness lo verifica desde la API desplegada**, según la sección de despliegue remoto.
 - `campus_maps` solo tiene `_id_`: faltan `campus_version_uq` y `one_active_map_per_campus`. El preflight acotado no encontró duplicados. **No se modificaron los índices remotos**. Se preparó `scripts/ensure-map-indexes.mjs`, que evita ejecutar el bootstrap Mongo legado completo.
 - El rol SQL existente no es superusuario, pero tiene `BYPASSRLS`. Debe revisarse su alcance antes de considerar mínimos privilegios verificados. No se crearon roles ni se cambiaron grants/RLS.
 
@@ -94,7 +152,9 @@ Los workers existentes ejecutan una tanda al iniciar y programan la siguiente al
 
 Render Free suspende el servicio tras 15 minutos sin tráfico y su arranque en frío puede demorar alrededor de un minuto. Mientras duerme, no ejecuta workers: los pendientes se reconcilian al despertar, pero no se garantiza la hora exacta ni se reproducen todos los avisos de ocurrencias ya terminadas. El disco es efímero y Key Value Free puede reiniciarse perdiendo contadores. El Blueprint no añade discos, cron, workers pagos ni tráfico artificial de mantenimiento. Respetar los límites gratuitos de horas, transferencia y compilación del workspace. [Límites oficiales](https://render.com/docs/free).
 
-## Retomar el despliegue
+## Procedimiento original de despliegue (referencia)
+
+Estos pasos se conservaron de la preparación local. Para saber qué se ejecutó y qué sigue pendiente, consultar la sección de despliegue remoto al inicio del informe.
 
 1. Abrir una sesión con la integración @Render que exponga sus herramientas. Aunque la instalación figuraba completada, esta sesión no recibió herramientas Render. Alternativa: CLI oficial 2.36.0 descargada y comprobada por SHA-256, disponible localmente:
 
@@ -139,4 +199,4 @@ En `Fase 2/Evidencias Proyecto/CampusLink/backendclink/`:
 
 En `frontendclink/`: `package-lock.json`.
 
-Los logs, informes redactados, herramientas, dependencias instaladas y builds quedan ignorados por Git. El criterio de aceptación del despliegue completo **todavía no se cumple**.
+Los logs, informes redactados, herramientas, dependencias instaladas y builds quedan ignorados por Git. La infraestructura pública ya está desplegada; la aceptación funcional completa y la identificación confiable de clientes detrás del proxy siguen pendientes.
