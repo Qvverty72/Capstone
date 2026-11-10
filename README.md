@@ -100,7 +100,9 @@ En esa rama, la ejecución documentada del **10 de noviembre de 2026** obtuvo:
 
 Estos resultados corresponden a la **rama experimental**, no certifican automáticamente este `main`. Los E2E aprobados utilizan API simulada y datos sintéticos. Se omitieron el acceso QA real sin credenciales, Expo GL nativo y dos casos del backend que requieren Redis externo.
 
-[![Abrir demostración de CampusLink](https://raw.githubusercontent.com/Qvverty72/Capstone/experiment/playwright-demo/Fase%202/Evidencias%20Proyecto/CampusLink/docs/demo/thumbnail.png)](https://github.com/Qvverty72/Capstone/blob/experiment/playwright-demo/Fase%202/Evidencias%20Proyecto/CampusLink/docs/demo/campuslink-demo.mp4?raw=1)
+https://github.com/user-attachments/assets/45af7840-2831-409b-a8d4-a07bfb0beadb
+
+[Abrir o descargar el MP4](https://github.com/Qvverty72/Capstone/blob/experiment/playwright-demo/Fase%202/Evidencias%20Proyecto/CampusLink/docs/demo/campuslink-demo.mp4?raw=1)
 
 La demo MP4 dura aproximadamente **69 segundos** y muestra acceso, perfil, actividades, mercado y biblioteca en una vista móvil de Expo Web. Mantiene un aviso visible de **datos sintéticos y API simulada**. No certifica la persistencia real ni incluye el mapa 3D o la administración.
 
