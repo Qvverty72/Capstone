@@ -1,79 +1,129 @@
-# Capstone GRUPO 5 — CampusLink&#x20;
+# Capstone Grupo 5 — CampusLink
 
-Repositorio académico correspondiente al proyecto **Capstone de Duoc UC**.
+**CampusLink** es una aplicación para la comunidad estudiantil de Duoc UC. Reúne material académico, intercambio de recursos físicos, actividades del campus y un mapa 3D para explorar sus espacios.
 
-El objetivo de este repositorio es centralizar la **documentación, entregables, material de apoyo y archivos asociados a las distintas fases de evaluación** del proyecto **CampusLink**.
+Este repositorio contiene **los entregables académicos y el código fuente del frontend y backend**. El software está en [`Fase 2/Evidencias Proyecto/CampusLink`](Fase%202/Evidencias%20Proyecto/CampusLink/), junto con su [documentación técnica](Fase%202/Evidencias%20Proyecto/CampusLink/README.md).
 
-> Este repositorio no contiene el código fuente principal de CampusLink.
-> El desarrollo de la aplicación se mantiene en repositorios separados.
+## Estado del proyecto
 
-## Proyecto
+El proyecto continúa en desarrollo e integración durante la **Fase 2**, con metodología **Scrum**. La documentación y evidencias de la Fase 1 se conservan para consulta. Ya existen pantallas, servicios y pruebas para los principales módulos; su presencia en el código no significa que todos los recorridos estén validados en producción o en cada plataforma.
 
-**CampusLink** es el proyecto desarrollado para la asignatura de Capstone.
+| Módulo | Alcance presente en el código |
+| --- | --- |
+| Acceso institucional | Registro, inicio de sesión, recuperación y autorización por identidad, roles y capacidades |
+| Perfil y notificaciones | Perfil académico, consultas personales, inscripciones y avisos al usuario |
+| Actividades | Consulta, creación, participación, ubicación, eventos oficiales y recurrencia |
+| Mercado estudiantil | Catálogo físico, venta o donación, publicaciones, solicitudes, coordinación y transacciones |
+| Biblioteca digital | Recursos PDF, búsqueda, clasificación académica, vista previa y materiales adquiridos |
+| Mapa 3D | Modelo del campus, edificios, pisos y puntos de interés, con datos suministrados por el backend |
+| Administración y analítica | Gestión de accesos, denuncias, auditoría, indicadores y exportación de reportes según permisos |
 
-El proyecto se trabaja utilizando una metodología ágil basada en **Scrum**, organizando el desarrollo mediante Product Backlog, Sprints, historias de usuario y entregables asociados a las distintas fases del proyecto.
+La experiencia principal es **móvil con Expo**. También existe salida web; las funciones nativas y el renderizado 3D requieren validación específica por plataforma. CampusLink no procesa pagos electrónicos: los acuerdos se realizan entre los usuarios.
 
-## Contenido del repositorio
+## Organización del repositorio
 
-Aquí se almacenan principalmente:
+```text
+Capstone/
+├── Fase 1/
+│   ├── Evidencias Grupales/
+│   └── Evidencias Individuales/
+└── Fase 2/
+    ├── Evidencias Grupales/
+    ├── Evidencias Individuales/
+    └── Evidencias Proyecto/
+        └── CampusLink/
+            ├── frontendclink/
+            ├── backendclink/
+            └── README.md
+```
 
-- Documentación del proyecto.
-- Product Vision.
-- Product Backlog.
-- Historias de usuario.
-- Sprint Backlogs.
-- Definition of Done.
-- Diagramas y documentación de arquitectura.
-- Modelos de datos.
-- Informes y entregables de cada fase.
-- Pautas, plantillas y documentos entregados por los profesores.
-- Correcciones realizadas a partir de retroalimentación docente.
-- Material de apoyo utilizado durante el desarrollo del Capstone.
+Los documentos académicos incluyen planificación, backlog, historias de usuario, arquitectura, modelos de datos y evidencias de los sprints. Las carpetas de software contienen la implementación y sus pruebas.
 
-La estructura del repositorio puede modificarse a medida que avancen las distintas fases del proyecto.
+## Tecnologías y arquitectura
 
-## Estado actual
+| Capa | Tecnologías principales |
+| --- | --- |
+| Aplicación | TypeScript, React Native 0.88, React 19.3, Expo SDK 58 y Expo Router |
+| Interfaz y estado | NativeWind, Zustand y componentes React Native |
+| Visualización 3D | Three.js, React Three Fiber, Drei y Expo GL |
+| API | Node.js, Express y TypeScript |
+| Autenticación y datos relacionales | Supabase y PostgreSQL |
+| Mapa y actividades | MongoDB |
+| Control de solicitudes | Redis para rate limiting compartido |
 
-**Estado:** En desarrollo
-**Fase actual:** Fase 2
-**Metodología:** Scrum
+La aplicación consume una API REST. El backend autoriza cada operación y coordina la persistencia; el frontend no accede directamente a MongoDB. Las credenciales privadas permanecen en el servidor.
 
-La **Fase 1** ya fue entregada y evaluada. Actualmente el equipo se encuentra trabajando en la **Fase 2**, incorporando las correcciones obtenidas durante la retroalimentación y avanzando en la documentación, arquitectura, modelado de datos y desarrollo de los módulos definidos para CampusLink.
+## Ejecutar el proyecto localmente
 
-Los documentos de este repositorio se irán actualizando conforme avance el proyecto y se realicen nuevas entregas.
+Se recomienda **Node 22.13 o posterior dentro de la rama 22**, compatible con el requisito del backend. El frontend también admite Node 24.3+ o 26+. Se necesita acceso a un entorno propio de Supabase/PostgreSQL y MongoDB. Docker es opcional; el Compose del backend incluye Redis.
 
-## Repositorios de desarrollo
+### Backend
 
-El código fuente de CampusLink se mantiene separado de este repositorio académico, principalmente en repositorios destinados a:
+Desde la raíz del repositorio:
 
-- Frontend.
-- Backend.
-- Desarrollo e integración de los servicios del sistema.
+```bash
+cd "Fase 2/Evidencias Proyecto/CampusLink/backendclink"
+npm ci
+```
 
-Este repositorio se utiliza exclusivamente como **fuente de documentación y seguimiento de los entregables académicos del Capstone**.
+Preparar un `.env` privado a partir de `.env.example`, configurar las conexiones y aplicar el esquema/migraciones del entorno correspondiente. Después, ejecutar `npm run dev` o `docker compose up --build` desde esa carpeta.
+
+Consultar el [README del backend](Fase%202/Evidencias%20Proyecto/CampusLink/backendclink/README.md) para conexiones, migraciones, CORS y Redis. El contenedor no sustituye la preparación de las bases de datos externas.
+
+### Frontend
+
+En otra terminal, desde la raíz:
+
+```bash
+cd "Fase 2/Evidencias Proyecto/CampusLink/frontendclink"
+npm ci
+npm run start -- --clear
+```
+
+Antes de iniciar Expo, preparar el `.env` local con `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_SUPABASE_URL` y una **clave pública** de Supabase. Consultar los ejemplos del [README de CampusLink](Fase%202/Evidencias%20Proyecto/CampusLink/README.md). Para web, ejecutar `npm run web`.
+
+Desde un teléfono físico, la API debe apuntar a una IP o URL accesible por el dispositivo; `localhost` corresponde al teléfono. No incorporar claves secret/service_role ni credenciales de bases de datos en variables `EXPO_PUBLIC_*` o en Git. En PowerShell, usar `npm.cmd` y `npx.cmd` si la política del equipo bloquea los scripts `.ps1`.
+
+## Pruebas y demostración automatizada
+
+El frontend conserva sus pruebas en `frontendclink/tests/` y el backend en `backendclink/tests/`. Ambos incluyen `npm run typecheck`; el backend ejecuta su suite con `npm test`.
+
+La suite **Playwright y el pipeline audiovisual están en la rama [`experiment/playwright-demo`](https://github.com/Qvverty72/Capstone/tree/experiment/playwright-demo)**, creada desde `prerelease`. No se han fusionado automáticamente a `main`.
+
+En esa rama, la ejecución documentada del **10 de noviembre de 2026** obtuvo:
+
+| Suite | Aprobadas | Fallidas | Omitidas |
+| --- | ---: | ---: | ---: |
+| Playwright en Chromium | 15 | 0 | 2 |
+| Pruebas anteriores del frontend | 453 | 0 | 0 |
+| Pruebas anteriores del backend | 793 | 0 | 2 |
+
+Estos resultados corresponden a la **rama experimental**, no certifican automáticamente este `main`. Los E2E aprobados utilizan API simulada y datos sintéticos. Se omitieron el acceso QA real sin credenciales, Expo GL nativo y dos casos del backend que requieren Redis externo.
+
+[![Abrir demostración de CampusLink](https://raw.githubusercontent.com/Qvverty72/Capstone/experiment/playwright-demo/Fase%202/Evidencias%20Proyecto/CampusLink/docs/demo/thumbnail.png)](https://github.com/Qvverty72/Capstone/blob/experiment/playwright-demo/Fase%202/Evidencias%20Proyecto/CampusLink/docs/demo/campuslink-demo.mp4?raw=1)
+
+La demo MP4 dura aproximadamente **69 segundos** y muestra acceso, perfil, actividades, mercado y biblioteca en una vista móvil de Expo Web. Mantiene un aviso visible de **datos sintéticos y API simulada**. No certifica la persistencia real ni incluye el mapa 3D o la administración.
+
+- [Guía de Playwright y limitaciones](https://github.com/Qvverty72/Capstone/blob/experiment/playwright-demo/Fase%202/Evidencias%20Proyecto/CampusLink/docs/qa/playwright.md).
+- [Resultados y evidencias de ejecución](https://github.com/Qvverty72/Capstone/blob/experiment/playwright-demo/Fase%202/Evidencias%20Proyecto/CampusLink/docs/qa/results/validation.md).
+- [Regenerar el MP4](https://github.com/Qvverty72/Capstone/blob/experiment/playwright-demo/Fase%202/Evidencias%20Proyecto/CampusLink/docs/demo/README.md).
+
+Desde `frontendclink/` **en la rama experimental**:
+
+```bash
+npm run test:e2e
+npm run test:e2e:report
+npm run demo:record
+```
+
+La guía incluye la instalación de Chromium y FFmpeg local. No se depende de GitHub Actions ni de servicios de video de pago.
 
 ## Equipo
 
-Proyecto desarrollado por estudiantes de **Duoc UC — Sede Concepción** para la asignatura **Capstone**.
+Proyecto Capstone de Ingeniería en Informática, **Duoc UC — Sede Concepción**.
 
-Brian Chávez&#x20;
+- Brian Chávez
+- Carlos Soto
+- Juan Pablo Arriagada
 
-Carlos Soto
-
-Juan Pablo Arriagada&#x20;
-
----
-
-## Levantar el sistema
-
-El código de CampusLink se encuentra en los repositorios de desarrollo correspondientes.
-
-De forma resumida:
-
-- **Backend:** configurar `.env` y ejecutar `docker compose up --build`.
-- **Frontend:** configurar `.env`, instalar dependencias y ejecutar `npx expo start -c`.
-- La aplicación Expo debe apuntar a la URL/IP donde se encuentre disponible la API.
-
-Para la configuración completa del entorno se debe consultar la documentación técnica del proyecto.
-
-**Última actualización:** Octubre de 2026
+**Última actualización:** 10 de noviembre de 2026.
