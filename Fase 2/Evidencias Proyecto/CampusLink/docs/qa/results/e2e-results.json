@@ -1,6 +1,6 @@
 {
-  "startedAt": "2026-11-10T13:58:47.672Z",
-  "durationMs": 21097.132,
+  "startedAt": "2026-11-10T14:08:07.079Z",
+  "durationMs": 21650.916,
   "branch": "experiment/playwright-demo",
   "baseSHA": "35eb6887dc607f689014c7a9b07aa8a451abfcf4",
   "platform": "win32",
@@ -18,98 +18,98 @@
       "title": "actividades inscritas se abren desde el perfil @mock",
       "file": "activities/activities.mock.spec.ts",
       "status": "passed",
-      "durationMs": 2524
+      "durationMs": 2498
     },
     {
       "title": "login accesible, campos obligatorios y enlaces @mock",
       "file": "auth/auth.mock.spec.ts",
       "status": "passed",
-      "durationMs": 2403
+      "durationMs": 2390
     },
     {
       "title": "rechaza credenciales inválidas y limpia contraseña @mock",
       "file": "auth/auth.mock.spec.ts",
       "status": "passed",
-      "durationMs": 1319
+      "durationMs": 1403
     },
     {
       "title": "sesión persiste tras recarga y logout retira rutas @mock",
       "file": "auth/auth.mock.spec.ts",
       "status": "passed",
-      "durationMs": 3399
+      "durationMs": 3375
     },
     {
       "title": "cuenta suspendida muestra rechazo confirmado por /me @mock",
       "file": "auth/auth.mock.spec.ts",
       "status": "passed",
-      "durationMs": 1433
+      "durationMs": 1573
     },
     {
       "title": "login QA real, continuidad y logout @real",
       "file": "auth/session.real.spec.ts",
       "status": "skipped",
-      "durationMs": 46,
+      "durationMs": 50,
       "reason": "Se requieren E2E_QA_EMAIL y E2E_QA_PASSWORD de una cuenta QA autorizada; no se usan cuentas personales."
     },
     {
       "title": "biblioteca busca y muestra detalle con vista previa @mock",
       "file": "library/library.mock.spec.ts",
       "status": "passed",
-      "durationMs": 2707
+      "durationMs": 2689
     },
     {
       "title": "formulario digital valida campos antes de publicar @mock",
       "file": "library/library.mock.spec.ts",
       "status": "passed",
-      "durationMs": 2113
+      "durationMs": 1996
     },
     {
       "title": "catálogo, búsqueda con debounce y detalle @mock",
       "file": "marketplace/catalog.mock.spec.ts",
       "status": "passed",
-      "durationMs": 2115
+      "durationMs": 2113
     },
     {
       "title": "búsqueda sin resultados @mock",
       "file": "marketplace/catalog.mock.spec.ts",
       "status": "passed",
-      "durationMs": 2045
+      "durationMs": 2479
     },
     {
       "title": "modalidad donación filtra y vuelve al catálogo completo @mock",
       "file": "marketplace/catalog.mock.spec.ts",
       "status": "passed",
-      "durationMs": 2476
+      "durationMs": 2636
     },
     {
       "title": "error del catálogo se recupera al reintentar @mock",
       "file": "marketplace/catalog.mock.spec.ts",
       "status": "passed",
-      "durationMs": 1911
+      "durationMs": 1994
     },
     {
       "title": "publicación valida datos sin escribir en servicios @mock",
       "file": "marketplace/catalog.mock.spec.ts",
       "status": "passed",
-      "durationMs": 1632
+      "durationMs": 1763
     },
     {
       "title": "rutas protegidas y permisos sin sesión @mock",
       "file": "navigation/navigation.mock.spec.ts",
       "status": "passed",
-      "durationMs": 4336
+      "durationMs": 4382
     },
     {
       "title": "navegación principal y administración oculta para estudiante @mock",
       "file": "navigation/navigation.mock.spec.ts",
       "status": "passed",
-      "durationMs": 2139
+      "durationMs": 2245
     },
     {
       "title": "mapa muestra error de servicio y permite reintentar @mock",
       "file": "navigation/navigation.mock.spec.ts",
       "status": "passed",
-      "durationMs": 1655
+      "durationMs": 1577
     },
     {
       "title": "OpenGL/Expo GL nativo requiere dispositivo; fuera de Chromium @native",
