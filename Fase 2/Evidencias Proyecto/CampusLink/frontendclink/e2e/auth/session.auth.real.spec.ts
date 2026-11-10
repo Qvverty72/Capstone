@@ -13,11 +13,15 @@ test.describe('Autenticación con proveedor real @real @auth', () => {
     await expect(page.getByRole('button', { name: 'Crear cuenta', exact: true })).toBeDisabled();
   });
 
-  test('recuperación: solicitud uniforme y rechazo real de OTP inválido', async ({ ui }) => {
+  test('recuperación: cuenta inexistente y rechazo real de OTP inválido', async ({ ui }) => {
     const page = await ui.page('sujeto'); await logout(page);
     await page.getByRole('link', { name: 'Olvidé mi contraseña' }).click();
     await expect(page.getByRole('heading', { name: '¿Olvidaste tu contraseña?', exact: true })).toBeVisible();
-    await page.getByRole('textbox', { name: 'Correo', exact: true }).fill(ui.user('sujeto').email);
+    // Esta identidad no se crea: GoTrue no debe enviar correo a una cuenta QA .invalid.
+    // La entrega correcta se verifica solo en el caso separado con buzón autorizado.
+    const absentEmail = `sin-cuenta.${ui.manifest.runId}@campuslink.invalid`;
+    expect(ui.manifest.users.some(user => user.email === absentEmail)).toBe(false);
+    await page.getByRole('textbox', { name: 'Correo', exact: true }).fill(absentEmail);
     const requested = await responseAction(page, 'POST', /\/auth\/recover$/, () => page.getByRole('button', { name: 'Enviar código', exact: true }).click(), 202);
     expect(requested.status).toBe('recovery_requested'); // 202 no demuestra entrega de correo.
     await page.getByLabel('Código de recuperación', { exact: true }).fill('000000');
