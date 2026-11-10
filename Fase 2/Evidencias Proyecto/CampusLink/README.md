@@ -6,7 +6,7 @@ El proyecto se desarrolla como **Capstone de Ingeniería en Informática** y act
 
 ## Demostración de CampusLink
 
-[![Ver la demostración de CampusLink: aplicación web en vista móvil](docs/demo/thumbnail.png)](docs/demo/campuslink-demo.mp4)
+https://github.com/user-attachments/assets/45af7840-2831-409b-a8d4-a07bfb0beadb
 
 [Abrir o descargar el MP4](docs/demo/campuslink-demo.mp4?raw=1) · 69 segundos · 1280×720 · H.264 · sin audio.
 
@@ -21,7 +21,7 @@ Recorrido de las pantallas reales de Expo Web, controladas con Playwright en una
 
 **Datos sintéticos y API simulada:** la grabación demuestra la interfaz y su navegación; no certifica la conexión real con Supabase, PostgreSQL o MongoDB. El aviso también aparece durante todo el video. El mapa 3D y la administración no se incluyen en esta demo.
 
-La miniatura enlaza al archivo MP4; no presupone un reproductor embebido en el README de GitHub. Consulta la [regeneración y publicación del video](docs/demo/README.md) y la [suite E2E, cobertura y resultados](docs/qa/playwright.md). Desde `frontendclink/`, `npm run demo:record` regenera el MP4 y la miniatura.
+El video se aloja como un adjunto de GitHub para reproducirse dentro del README. El enlace de descarga conserva una alternativa al reproductor. Consulta la [regeneración y publicación del video](docs/demo/README.md) y la [suite E2E, cobertura y resultados](docs/qa/playwright.md). Desde `frontendclink/`, `npm run demo:record` regenera el MP4 y la miniatura locales; publicar una nueva versión requiere actualizar también el adjunto de GitHub.
 
 ---
 

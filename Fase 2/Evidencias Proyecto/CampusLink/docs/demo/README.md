@@ -41,16 +41,18 @@ Miniatura: screenshot PNG real de la composición mostrando Biblioteca. No se ut
 
 ## GitHub y reproducción
 
-El README usa una **miniatura clicable**, no un tag `<video>`. El enlace relativo abre el archivo del repositorio; `?raw=1` permite acceder a los bytes o descargarlo. No se promete que un enlace relativo genere un reproductor embebido.
+Los README principal de `main` y de CampusLink en la rama experimental incluyen el **reproductor de GitHub**, mediante el MP4 subido como adjunto del repositorio:
 
-Se comprobó la sanitización real mediante la API Markdown de GitHub: conserva el enlace/imagen y retira el tag de video local (evidencia en `docs/qa/results/github-markdown.html`). No se publicó esta rama ni se verificó su README en una página pública después de un push.
+https://github.com/user-attachments/assets/45af7840-2831-409b-a8d4-a07bfb0beadb
 
-Para incorporar opcionalmente un reproductor con un asset compatible:
+La URL debe permanecer sola en un párrafo para que GitHub la convierta en reproductor. Se conserva un enlace al archivo del repositorio como alternativa. Un enlace relativo o un tag `<video>` con ruta local no proporciona el mismo resultado; la evidencia inicial de sanitización sigue en `docs/qa/results/github-markdown.html`.
+
+`npm run demo:record` regenera los archivos locales, pero no cambia este adjunto alojado en GitHub. Para publicar una versión nueva:
 
 1. Revisar el MP4 final y su aviso de datos sintéticos.
-2. En GitHub, arrastrar el MP4 al editor compatible de adjuntos de un borrador de issue/comentario, sin enviar el mensaje. GitHub sube el archivo inmediatamente y devuelve una URL real; esta operación publica el asset, aunque no se envíe el comentario.
-3. Copiar la URL que GitHub entregue y probarla en la vista previa del README de la rama experimental. Guardar únicamente si la previsualización confirma la reproducción. Mantener la miniatura/enlace como alternativa.
-4. No inventar URLs `user-attachments` ni afirmar que se ha alojado un asset antes de hacerlo. Esta entrega conserva el archivo en Git y no ha subido adjuntos.
+2. En GitHub, arrastrar el MP4 al editor compatible de adjuntos de un borrador de issue/comentario, sin enviar el mensaje. GitHub sube el archivo inmediatamente y devuelve una URL real. También existe subida de adjuntos en GitHub CLI; esta publicación utilizó el mismo endpoint de assets de su implementación oficial, sin crear issues ni comentarios.
+3. Copiar la URL real a un párrafo independiente de cada README y comprobar que GitHub devuelve un reproductor. Conservar el enlace al MP4 del repositorio como alternativa.
+4. Mantener el archivo y la URL anterior hasta verificar la nueva publicación. No inventar URLs `user-attachments` ni afirmar que se ha alojado un asset antes de completar la subida.
 
 GitHub documenta MP4/MOV/WebM y recomienda H.264; el límite de video adjunto del plan gratuito es 10 MB. El archivo de esta entrega es menor que ese límite. [Documentación de adjuntos de GitHub](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/attaching-files).
 
