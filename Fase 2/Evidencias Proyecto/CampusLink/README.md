@@ -4,6 +4,25 @@
 
 El proyecto se desarrolla como **Capstone de Ingeniería en Informática** y actualmente se encuentra en una etapa de construcción e integración progresiva de sus módulos principales.
 
+## Demostración de CampusLink
+
+[![Ver la demostración de CampusLink: aplicación web en vista móvil](docs/demo/thumbnail.png)](docs/demo/campuslink-demo.mp4)
+
+[Abrir o descargar el MP4](docs/demo/campuslink-demo.mp4?raw=1) · 69 segundos · 1280×720 · H.264 · sin audio.
+
+Recorrido de las pantallas reales de Expo Web, controladas con Playwright en una composición horizontal con vista móvil.
+
+| Módulo | Recorrido mostrado |
+| --- | --- |
+| Acceso y perfil | Formulario de sesión, perfil académico y navegación |
+| Actividades | Consulta de inscripciones, fechas y ubicación |
+| Mercado | Catálogo, filtro de donaciones y detalle de un recurso físico |
+| Biblioteca | Búsqueda de material académico, detalle y vista previa |
+
+**Datos sintéticos y API simulada:** la grabación demuestra la interfaz y su navegación; no certifica la conexión real con Supabase, PostgreSQL o MongoDB. El aviso también aparece durante todo el video. El mapa 3D y la administración no se incluyen en esta demo.
+
+La miniatura enlaza al archivo MP4; no presupone un reproductor embebido en el README de GitHub. Consulta la [regeneración y publicación del video](docs/demo/README.md) y la [suite E2E, cobertura y resultados](docs/qa/playwright.md). Desde `frontendclink/`, `npm run demo:record` regenera el MP4 y la miniatura.
+
 ---
 
 ## ¿Qué problema busca resolver?

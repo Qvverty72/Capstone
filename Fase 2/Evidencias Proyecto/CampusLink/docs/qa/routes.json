@@ -1,0 +1,82 @@
+{
+  "routes": [
+    {
+      "route": "/",
+      "file": "app/index.tsx",
+      "screen": "inline: app/index.tsx"
+    },
+    {
+      "route": "/access",
+      "file": "app/(user)/access.tsx",
+      "screen": "@/features/users/components/CampusAccess"
+    },
+    {
+      "route": "/analytics",
+      "file": "app/(analytics)/analytics.tsx",
+      "screen": "inline: app/(analytics)/analytics.tsx"
+    },
+    {
+      "route": "/audit",
+      "file": "app/(user)/audit.tsx",
+      "screen": "@/features/users/components/AuditHistory"
+    },
+    {
+      "route": "/elibrary",
+      "file": "app/(marketplace)/(elibrary)/elibrary.tsx",
+      "screen": "@/features/marketplace/elibrary/components/DigitalLibraryScreen"
+    },
+    {
+      "route": "/history",
+      "file": "app/(analytics)/history.tsx",
+      "screen": "inline: app/(analytics)/history.tsx"
+    },
+    {
+      "route": "/login",
+      "file": "app/(login)/login.tsx",
+      "screen": "@/features/auth/components/LoginScreen"
+    },
+    {
+      "route": "/map",
+      "file": "app/(map)/map.tsx",
+      "screen": "inline: app/(map)/map.tsx"
+    },
+    {
+      "route": "/notifications",
+      "file": "app/(user)/notifications.tsx",
+      "screen": "@/features/users/components/ActivityNotifications"
+    },
+    {
+      "route": "/personal",
+      "file": "app/(user)/personal.tsx",
+      "screen": "@/features/users/components/ProfilePersonalScreen"
+    },
+    {
+      "route": "/physicalgoods",
+      "file": "app/(marketplace)/(physicalgoods)/physicalgoods.tsx",
+      "screen": "@/features/marketplace/physicalgoods/components/PublishPhysicalgoods"
+    },
+    {
+      "route": "/profile",
+      "file": "app/(user)/profile.tsx",
+      "screen": "@/features/users/components/ProfileScreen"
+    },
+    {
+      "route": "/recover",
+      "file": "app/(login)/recover.tsx",
+      "screen": "@/features/auth/components/RecoveryScreen"
+    },
+    {
+      "route": "/register",
+      "file": "app/(login)/register.tsx",
+      "screen": "@/features/auth/components/RegisterScreen"
+    },
+    {
+      "route": "/reports",
+      "file": "app/(reports)/reports.tsx",
+      "screen": "@/features/reports/components/ReportReviews"
+    }
+  ],
+  "existingFrontendTests": 38,
+  "existingFrontendQAScripts": 3,
+  "existingBackendTests": 44
+}

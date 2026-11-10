@@ -1,0 +1,22 @@
+{
+  "sha256": "22825c59cac6b04bc154479f823acbd3fd7cef2cc0eee9d0a2bb5ee531585dee",
+  "sizeBytes": 1213558,
+  "chromiumPlayback": {
+    "width": 1280,
+    "height": 720,
+    "durationSeconds": 68.733333,
+    "decodedFrames": 5,
+    "error": null
+  },
+  "ffmpegFullDecode": "passed",
+  "visualFramesReviewedSeconds": [
+    0.5,
+    12,
+    23,
+    34,
+    45,
+    57,
+    65
+  ],
+  "visualReview": "Real UI visible; correct mobile proportions; Spanish chapters; mock disclosure; no errors or personal data observed."
+}

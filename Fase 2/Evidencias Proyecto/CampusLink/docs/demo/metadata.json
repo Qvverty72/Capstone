@@ -1,0 +1,49 @@
+{
+  "mode": "mocked-api",
+  "modules": [
+    "Acceso institucional",
+    "Perfil",
+    "Actividades personales",
+    "Mercado: catálogo, modalidad y detalle",
+    "Biblioteca: búsqueda y vista previa"
+  ],
+  "timeline": [
+    {
+      "chapter": "CampusLink",
+      "atSeconds": 0.001
+    },
+    {
+      "chapter": "Acceso institucional",
+      "atSeconds": 5.012
+    },
+    {
+      "chapter": "Tu perfil",
+      "atSeconds": 11.525
+    },
+    {
+      "chapter": "Actividades del campus",
+      "atSeconds": 18.033
+    },
+    {
+      "chapter": "Mercado estudiantil",
+      "atSeconds": 27.513
+    },
+    {
+      "chapter": "Biblioteca digital",
+      "atSeconds": 44.6
+    },
+    {
+      "chapter": "Comunidad conectada",
+      "atSeconds": 62.725
+    }
+  ],
+  "durationSeconds": 68.73,
+  "width": 1280,
+  "height": 720,
+  "fps": 30,
+  "codec": "h264",
+  "pixelFormat": "yuv420p",
+  "sizeBytes": 1213558,
+  "fullDecodeVerified": true,
+  "audio": false
+}

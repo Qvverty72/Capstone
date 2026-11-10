@@ -1,0 +1,33 @@
+{
+  "platform": "win32",
+  "node": "v24.19.0",
+  "frontend": {
+    "command": "npm run test:unit",
+    "collected": 453,
+    "passed": 453,
+    "failed": 0,
+    "skipped": 0,
+    "durationMs": 33041.2772
+  },
+  "backend": {
+    "command": "npm test",
+    "collected": 795,
+    "passed": 793,
+    "failed": 0,
+    "skipped": 2,
+    "durationMs": 24397.5863,
+    "note": "Backend engine specifies Node >=22.13 <23; this environment ran Node 24.19.0. Two external Redis cases skipped."
+  },
+  "additionalScripts": [
+    {
+      "command": "node tests/auth-session.qa.mjs",
+      "status": "passed",
+      "scope": "React/RNWeb with controlled transports; android/ios/web platform cases are simulated"
+    },
+    {
+      "command": "node tests/auth-forms.qa.mjs",
+      "status": "passed",
+      "scope": "RNWeb form harness; 19 responsive screenshots; no real email or backend"
+    }
+  ]
+}
