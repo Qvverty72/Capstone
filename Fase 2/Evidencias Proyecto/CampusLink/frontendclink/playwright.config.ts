@@ -3,10 +3,12 @@ import { baseURL, isReal, LOCAL_WEB, requireQATarget } from './qa/environment';
 
 if (isReal) requireQATarget();
 const writing = isReal && Boolean(process.env.E2E_QA_WRITE_RUN);
+const resilience = isReal && process.env.E2E_QA_SUITE === 'resilience';
+const authSuite = isReal && process.env.E2E_QA_SUITE === 'auth';
 export default defineConfig({
   testDir: './e2e',
-  testMatch: writing ? '**/*.write.real.spec.ts' : undefined,
-  testIgnore: isReal ? (writing ? '**/*.mock.spec.ts' : ['**/*.mock.spec.ts', '**/*.write.real.spec.ts']) : '**/*.write.real.spec.ts',
+  testMatch: authSuite ? '**/*.auth.real.spec.ts' : resilience ? '**/*.resilience.real.spec.ts' : writing ? '**/*.write.real.spec.ts' : undefined,
+  testIgnore: isReal ? (writing ? '**/*.mock.spec.ts' : ['**/*.mock.spec.ts', '**/*.write.real.spec.ts', '**/*.resilience.real.spec.ts', '**/*.auth.real.spec.ts']) : ['**/*.write.real.spec.ts', '**/*.resilience.real.spec.ts', '**/*.auth.real.spec.ts'],
   timeout: writing ? 180_000 : 45_000,
   expect: { timeout: 12_000 },
   fullyParallel: !writing,

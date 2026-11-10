@@ -6,6 +6,7 @@ import {mkdir,readFile,writeFile,rename} from 'node:fs/promises';
 import {resolve,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import assert from 'node:assert/strict';
+import {randomBytes} from 'node:crypto';
 import {ObjectId} from 'mongodb';
 import {newUIManifest,assertUIManifest,assertUIResources,assertUIStorage} from './ui-data.mjs';
 import {pdfFixture,pngFixture,qaApiBase} from './fixtures.mjs';
@@ -52,17 +53,36 @@ async function prepare(){
   });
  });
  await step('files',async()=>{await mkdir(resolve(root,'files'),{recursive:true});for(const [name,bytes] of [['imagen.png',pngFixture],['material.pdf',await pdfFixture('CampusLink Material QA')],['unidad2.pdf',await pdfFixture('CampusLink Unidad Dos QA',true)]])await writeFile(resolve(root,'files',name),bytes);});
+ if(process.env.QA_MAILBOX_EMAIL)await step('registration-plan',async()=>{
+  const address=process.env.QA_MAILBOX_EMAIL.trim().toLowerCase();assert.match(address,/^[a-z0-9._-]+@[a-z0-9.-]+\.[a-z]+$/);
+  const [local,domain]=address.split('@');
+  const option=(await db.query('SELECT d.institucion_id,c.id,c.nombre FROM dominio_institucional d JOIN campus c ON c.institucion_id=d.institucion_id WHERE d.dominio=$1 AND d.activo AND c.activo ORDER BY c.id LIMIT 1',[domain])).rows[0];
+  assert.ok(option,'El buzón QA debe pertenecer a un dominio admitido; no se modifica el catálogo');
+  const email=local+'+clqa'+m.runId.replaceAll('-','')+'@'+domain;
+  assert.equal((await db.query('SELECT id FROM auth.users WHERE email=$1',[email])).rows.length,0,'No reutilizar una cuenta existente');
+  m.registration={mailbox:address,email,campus:option.id,campusName:option.nombre,institution:option.institucion_id,name:m.prefix+' Registro',password:randomBytes(24).toString('base64url')+'Az1!',absentBeforeRun:true};
+ });
  m.ready=true;await save();console.log(JSON.stringify({fixture:'ready',runId:m.runId}));
 }
 async function clean(){
  if(m.cleaned){console.log(JSON.stringify({cleanup:'already-clean',runId:m.runId}));return;}
  const users=m.users.map(u=>u.id);
+ if(m.registration){
+  const r=m.registration;assert.equal(r.absentBeforeRun,true);assert.equal(r.name,m.prefix+' Registro');
+  const [local,domain]=r.mailbox.split('@');assert.equal(r.email,local+'+clqa'+m.runId.replaceAll('-','')+'@'+domain);
+  const row=(await db.query('SELECT id FROM auth.users WHERE email=$1',[r.email])).rows[0];
+  if(row){const found=await authUser(row.id);assert.equal(found.email,r.email);assert.equal(found.user_metadata.campus_id,r.campus);assert.equal(found.user_metadata.nombre_completo,r.name);assert.ok(Date.parse(found.created_at)>=Date.parse(m.createdAt));r.id=row.id;users.push(row.id);await save();}
+ }
  if(!m.cleanup.sql){
   stage='ownership-guards';
   const institution=(await db.query('SELECT nombre FROM institucion WHERE id=$1',[m.institution])).rows[0];assert.equal(institution?.nombre,m.prefix,'Institución ajena o inexistente');
+  const queue=mg.collection('qa_activity_queue');
+  const tasks=await queue.find({$or:[{campusId:m.campus},{qaUiRun:m.runId}]}).toArray();
+  for(const task of tasks){assert.equal(task.campusId,m.campus);assert.equal(task.qaUiRun,m.runId);assert.ok(task.event.key.startsWith('qa:'+m.runId+':'));assert.ok(task.event.recipientIds.every(id=>users.includes(id)));}
+  await queue.deleteMany({campusId:m.campus,qaUiRun:m.runId});
   assert.equal(await mg.collection('activities').countDocuments({campusId:m.campus}),0,'Actividad fuera del alcance de este recorrido');
-  const profiles=(await db.query('SELECT id,campus_id,institucion_id FROM perfil_usuario WHERE campus_id=$1 OR institucion_id=$2',[m.campus,m.institution])).rows;
-  for(const row of profiles){assert.ok(users.includes(row.id));assert.equal(row.campus_id,m.campus);assert.equal(row.institucion_id,m.institution);}
+  const profiles=(await db.query('SELECT id,campus_id,institucion_id FROM perfil_usuario WHERE campus_id=$1 OR institucion_id=$2 OR id=$3',[m.campus,m.institution,m.registration?.id??null])).rows;
+  for(const row of profiles){assert.ok(users.includes(row.id));const reg=row.id===m.registration?.id;assert.equal(row.campus_id,reg?m.registration.campus:m.campus);assert.equal(row.institucion_id,reg?m.registration.institution:m.institution);}
   for(const u of m.users){const found=await authUser(u.id);if(found)assert.equal(found.user_metadata.qaUiRun,m.runId,'Identidad ajena');}
   const rows=(await db.query('SELECT id,campus_id,propietario_id,titulo FROM publicacion_recurso WHERE campus_id=$1 OR propietario_id=ANY($2::uuid[])',[m.campus,users])).rows;
   assertUIResources(m,rows);const ids=rows.map(r=>r.id);
@@ -79,7 +99,7 @@ async function clean(){
   stage='cleanup-sql';
   await transaction(async()=>{
    await db.query('SELECT id FROM perfil_usuario WHERE id=ANY($1::uuid[]) FOR UPDATE',[users]);
-   await db.query('DELETE FROM notificacion WHERE destinatario_id=ANY($1::uuid[]) AND campus_id=$2',[users,m.campus]);
+   await db.query('DELETE FROM notificacion WHERE destinatario_id=ANY($1::uuid[]) AND (campus_id=$2 OR publicacion_id=ANY($3::uuid[]) OR destinatario_id=$4)',[users,m.campus,ids,m.registration?.id??null]);
    await db.query('DELETE FROM auditoria WHERE institucion_id=$1 AND actor_usuario_id=ANY($2::uuid[])',[m.institution,users]);
    await db.query('DELETE FROM reporte WHERE institucion_id=$1 AND generado_por_id=ANY($2::uuid[])',[m.institution,users]);
    await db.query('DELETE FROM reporte_contenido WHERE campus_id=$1 AND reportante_id=ANY($2::uuid[])',[m.campus,users]);
@@ -90,7 +110,7 @@ async function clean(){
    for(const table of ['publicacion_carrera','publicacion_asignatura','archivo_publicacion','recurso_fisico','recurso_digital'])await db.query(`DELETE FROM ${table} WHERE publicacion_id=ANY($1::uuid[])`,[ids]);
    await db.query('DELETE FROM publicacion_recurso WHERE id=ANY($1::uuid[]) AND campus_id=$2',[ids,m.campus]);
    for(const table of ['usuario_rol','usuario_permiso','usuario_carrera','usuario_asignatura'])await db.query(`DELETE FROM ${table} WHERE perfil_usuario_id=ANY($1::uuid[])`,[users]);
-   await db.query('DELETE FROM perfil_usuario WHERE id=ANY($1::uuid[]) AND campus_id=$2',[users,m.campus]);
+   await db.query('DELETE FROM perfil_usuario WHERE id=ANY($1::uuid[]) AND (campus_id=$2 OR (id=$3 AND campus_id=$4))',[users,m.campus,m.registration?.id??null,m.registration?.campus??null]);
    await db.query('DELETE FROM campus_carrera WHERE campus_id=$1 AND carrera_id=$2',[m.campus,m.career]);
    await db.query('DELETE FROM carrera_asignatura WHERE carrera_id=$1 AND asignatura_id=$2',[m.career,m.subject]);
    await db.query('DELETE FROM asignatura WHERE id=$1',[m.subject]);await db.query('DELETE FROM carrera WHERE id=$1 AND institucion_id=$2',[m.career,m.institution]);
@@ -104,6 +124,7 @@ async function clean(){
  if(m.mapId)await mg.collection('campus_maps').deleteOne({_id:new ObjectId(m.mapId),campusId:m.campus});
  stage='cleanup-auth';
  for(const u of m.users){const found=await authUser(u.id);if(found){assert.equal(found.user_metadata.qaUiRun,m.runId);const r=await admin.auth.admin.deleteUser(u.id);assert.ok(!r.error,'Identidad QA no se pudo limpiar');}}
+ if(m.registration?.id){const r=m.registration,found=await authUser(r.id);if(found){assert.equal(found.email,r.email);assert.equal(found.user_metadata.campus_id,r.campus);assert.equal(found.user_metadata.nombre_completo,r.name);const result=await admin.auth.admin.deleteUser(r.id);assert.ok(!result.error,'No se pudo limpiar el registro QA');}}
  const remaining=(await db.query("SELECT (SELECT count(*) FROM auth.users WHERE id=ANY($1::uuid[]))+(SELECT count(*) FROM institucion WHERE id=$2)+(SELECT count(*) FROM storage.objects WHERE name LIKE $3) AS n",[users,m.institution,m.campus+'/%'])).rows[0].n;
  assert.equal(Number(remaining),0,'Residuos QA');m.cleaned=true;await save();console.log(JSON.stringify({cleanup:'verified',runId:m.runId,resources:m.resources?.length??0}));
 }

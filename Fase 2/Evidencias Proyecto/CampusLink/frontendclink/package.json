@@ -24,7 +24,15 @@
     "demo:record": "tsx demo/scripts/record.ts",
     "demo:build": "tsx demo/scripts/build.ts",
     "test:e2e:real": "tsx qa/real.ts",
-    "test:e2e:write": "tsx qa/real.ts --write"
+    "test:e2e:write": "tsx qa/real.ts --write",
+    "test:e2e:resilience": "tsx qa/real.ts --write --suite=resilience",
+    "test:load": "tsx qa/real.ts --suite=load",
+    "test:native": "tsx qa/real.ts --write --suite=native",
+    "qa:android:setup": "node qa/native/setup.mjs",
+    "test:e2e:auth": "tsx qa/real.ts --write --suite=auth",
+    "test:workers:real": "tsx qa/real.ts --write --suite=workers",
+    "qa:android:start": "node qa/native/emulator.mjs start",
+    "qa:android:stop": "node qa/native/emulator.mjs stop"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

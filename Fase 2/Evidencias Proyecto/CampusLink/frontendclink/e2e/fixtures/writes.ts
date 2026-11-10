@@ -6,7 +6,8 @@ import { isReal } from '../../qa/environment';
 
 export type Actor = 'propietario' | 'receptor' | 'admin' | 'sujeto';
 type User = { actor: Actor; id: string; name: string; email: string; password: string };
-export type UIManifest = { kind: string; runId: string; prefix: string; campus: string; institution: string; apiOrigin: string; users: User[]; ready: boolean; cleaned?: boolean };
+export type UIManifest = { kind: string; runId: string; prefix: string; campus: string; institution: string; apiOrigin: string; users: User[]; ready: boolean; cleaned?: boolean;
+  registration?: { email: string; name: string; password: string; campus: string; campusName: string; institution: string } };
 export type UIHarness = { manifest: UIManifest; user: (actor: Actor) => User; page: (actor: Actor) => Promise<Page>; title: (suffix: string) => string; file: (name: string) => string };
 
 export const test = base.extend<{ ui: UIHarness }>({
@@ -42,6 +43,7 @@ export const test = base.extend<{ ui: UIHarness }>({
         for (const error of base.info().errors) {
           let message = error.message ?? 'Error sin mensaje';
           for (const user of manifest.users) message = message.replaceAll(user.password, '[credencial QA]');
+          if (manifest.registration) message = message.replaceAll(manifest.registration.password, '[credencial QA]');
           console.error(message);
         }
         // Solo texto visible de las cuentas sintéticas del recorrido; excluye valores de inputs y sesiones.
@@ -60,7 +62,8 @@ export { expect };
 export async function responseAction(page: Page, method: string, path: RegExp, action: () => Promise<unknown>, status = 200) {
   const [response] = await Promise.all([page.waitForResponse(r => r.request().method() === method && path.test(new URL(r.url()).pathname), { timeout: 60_000 }), action()]);
   expect(response.status(), `${method} ${path}`).toBe(status);
-  return status === 204 ? undefined : (await response.json()).data;
+  // Los rechazos se comprueban por estado y UI; no se vuelcan cuerpos de error.
+  return status === 204 || status >= 400 ? undefined : (await response.json()).data;
 }
 export async function chooseFile(page: Page, button: string | RegExp, file: string | string[]) {
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: button, exact: typeof button === 'string' }).click()]);

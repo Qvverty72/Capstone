@@ -25,10 +25,12 @@ export function PhysicalgoodsDetail({ resources: r, onClose, onBusyChange, onReq
   const request = useRequestPhysicalgoods(r);
   const [reporting, setReporting] = useState(false), [reportBusy, setReportBusy] = useState(false);
   const [requesting, setRequesting] = useState(false), [managing, setManaging] = useState(false), [photoId, setPhotoId] = useState<string | null>(null);
+  const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
   const gallery = r.gallery, busy = r.busy || request.busy || reportBusy;
   const isOwner = Boolean(gallery && gallery.owner.id === auth.identity?.userId);
   const active = request.options?.activeRequest;
   const photo = gallery?.images.find(image => image.id === photoId) ?? gallery?.images.find(image => image.principal) ?? gallery?.images[0];
+  useEffect(() => { setFailedPhotoUrl(null); }, [gallery]);
   useEffect(() => { onBusyChange(busy); return () => onBusyChange(false); }, [busy, onBusyChange]);
   const openRequest = () => {
     if (gallery && active && onRequestDetail) onRequestDetail(gallery.id, active.id);
@@ -56,8 +58,9 @@ export function PhysicalgoodsDetail({ resources: r, onClose, onBusyChange, onReq
           {r.galleryLoading && <ResourceDetailSkeleton physical />}
           {r.galleryError && <View style={detailUI.card}><Text accessibilityRole="alert" style={detailUI.error}>{r.galleryError}</Text><Pressable accessibilityRole="button" onPress={r.reloadGallery} style={ui.outlined}><Text style={ui.link}>Reintentar detalle</Text></Pressable></View>}
           {gallery && <>
-            <View style={styles.hero}>{photo ? <Image key={photo.id} source={{ uri: photo.url }} accessibilityLabel={`Fotografía de ${gallery.title}`} style={styles.image} />
-              : <><ImageIcon size={38} color={colors.secondary} /><Text style={detailUI.helper}>Sin fotografías disponibles</Text></>}</View>
+            <View style={styles.hero}>{photo && photo.url !== failedPhotoUrl ? <Image key={photo.url} source={{ uri: photo.url }} onError={() => setFailedPhotoUrl(photo.url)} accessibilityLabel={`Fotografía de ${gallery.title}`} style={styles.image} />
+              : <><ImageIcon size={38} color={colors.secondary} /><Text style={detailUI.helper}>{photo ? 'No se pudo cargar la fotografía. El enlace puede haber vencido.' : 'Sin fotografías disponibles'}</Text>
+                {photo && <Pressable accessibilityRole="button" disabled={r.galleryLoading} onPress={r.reloadGallery} style={ui.outlined}><Text style={ui.link}>Renovar enlace de la fotografía</Text></Pressable>}</>}</View>
             {gallery.images.length > 1 && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>{gallery.images.map((image, index) => <Pressable key={image.id} accessibilityRole="button" accessibilityLabel={`Ver fotografía ${index + 1}`}
               accessibilityState={{ selected: photo?.id === image.id }} onPress={() => setPhotoId(image.id)} style={[styles.thumbnail, photo?.id === image.id && styles.selected]}><Image source={{ uri: image.url }} style={styles.image} /></Pressable>)}</ScrollView>}
             <View style={{ gap: 12 }}><View style={styles.titleRow}><Text accessibilityRole="header" style={[detailUI.title, styles.resourceTitle]}>{gallery.title}</Text><View style={styles.price}><PhysicalgoodsOriginalPrice original={gallery.originalTerms} current={{modality:gallery.modality,amount:gallery.price,currency:'CLP'}}/></View></View>

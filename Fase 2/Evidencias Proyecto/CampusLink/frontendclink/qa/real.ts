@@ -1,7 +1,7 @@
 /** Uso: npm run test:e2e:real -- local|render. Credenciales solo desde el manifiesto ignorado. */
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { readFile, mkdir, open, writeFile } from 'node:fs/promises';
+import { readFile, mkdir, open, writeFile, access } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { parseEnv } from 'node:util';
 import { setTimeout as wait } from 'node:timers/promises';
@@ -9,13 +9,23 @@ import { randomUUID } from 'node:crypto';
 
 async function main() {
   const args = process.argv.slice(2);
+  const suite = args.find(arg => arg.startsWith('--suite='))?.slice(8) ?? 'default';
+  if (!['default', 'resilience', 'load', 'native', 'auth', 'workers'].includes(suite)) throw new Error('Suite QA desconocida');
   const writeMode = args.includes('--write');
-  const cli = args.filter(arg => arg !== '--write');
+  const cli = args.filter(arg => arg !== '--write' && !arg.startsWith('--suite='));
   const target = cli.shift() ?? 'local';
   if (!['local', 'render'].includes(target) || process.env.QA_AUTHORIZED !== '1') {
     throw new Error('Uso: QA_AUTHORIZED=1 npm run test:e2e:real -- local|render');
   }
   const backend = resolve('../backendclink');
+  let backendNode = process.env.QA_NODE_BINARY;
+  if (!backendNode && process.versions.node.startsWith('22.')) backendNode = process.execPath;
+  if (!backendNode) {
+    const localNode = resolve(backend, 'qa/local/tools/node22', process.platform === 'win32' ? 'node.exe' : 'bin/node');
+    try { await access(localNode); backendNode = localNode; }
+    catch { throw new Error('backendclink requiere Node 22.13+. Ejecuta con Node 22 o indica QA_NODE_BINARY.'); }
+  }
+  const publicEnv = parseEnv(await readFile('.env', 'utf8'));
   let manifest = writeMode ? undefined : JSON.parse(await readFile(resolve(backend, 'qa/local/manifest.json'), 'utf8'));
   if (!writeMode && (!manifest.steps.complete || manifest.cleaned || !manifest.users.every((u: { email: string }) => u.email.endsWith('@campuslink.invalid')))) {
     throw new Error('Se requiere el manifiesto sintético de qa:seed');
@@ -28,7 +38,9 @@ async function main() {
     const parsed = new URL(url);
     if (parsed.username || parsed.password || parsed.search || parsed.hash || (target === 'render' && parsed.protocol !== 'https:')) throw new Error('URL QA inválida');
   }
-  const artifacts = resolve('qa/.artifacts/real-' + target + (writeMode ? '-write' : ''));
+  if (suite === 'native' && target !== 'render') throw new Error('El APK disponible apunta a Render; no certifica un backend local');
+  const browserSuite = !['load', 'native', 'workers'].includes(suite);
+  const artifacts = resolve('qa/.artifacts/real-' + target + (suite === 'default' ? (writeMode ? '-write' : '') : '-' + suite));
   await mkdir(artifacts, { recursive: true });
   const localRequire = createRequire(resolve('package.json'));
   const children: ChildProcess[] = [];
@@ -42,7 +54,7 @@ async function main() {
   async function fixture(command: 'prepare' | 'clean') {
     const log = await open(resolve(artifacts, 'fixture-' + command + '.log'), 'w');
     try {
-      const child = spawn(process.env.QA_NODE_BINARY ?? process.execPath, ['qa/ui-fixture.mjs', command, runId!], {
+      const child = spawn(backendNode!, ['qa/ui-fixture.mjs', command, runId!], {
         cwd: backend, env: { ...process.env, QA_API_URL: api }, stdio: ['ignore', log.fd, log.fd], windowsHide: true,
       });
       const code = await new Promise<number>(done => { child.once('exit', n => done(n ?? 1)); child.once('error', () => done(1)); });
@@ -76,12 +88,12 @@ async function main() {
       lifecycle.prepared = true; await saveLifecycle();
     }
     if (target === 'local') {
-      const publicEnv = parseEnv(await readFile('.env', 'utf8'));
       const authURL = publicEnv.EXPO_PUBLIC_SUPABASE_URL;
       if (!authURL || new URL(authURL).hostname !== manifest.target.supabase) throw new Error('Supabase web no coincide con el manifiesto QA');
       const apiChild = await launch(['qa/serve.mjs'], backend,
-        { ...process.env, QA_PORT: '3011', QA_SQL_DIAGNOSTICS: writeMode ? '1' : '', RATE_LIMIT_REDIS_URL: process.env.QA_REDIS_URL ?? 'redis://127.0.0.1:16379' }, 'api', process.env.QA_NODE_BINARY ?? process.execPath);
+        { ...process.env, QA_PORT: '3011', QA_SQL_DIAGNOSTICS: writeMode ? '1' : '', RATE_LIMIT_REDIS_URL: process.env.QA_REDIS_URL ?? 'redis://127.0.0.1:16379' }, 'api', backendNode);
       await ready(api + '/api/v1/ready', apiChild);
+      if (browserSuite) {
       const webChild = await launch([localRequire.resolve('expo/bin/cli'), 'start', '--web', '--localhost', '--port', '8090'], process.cwd(), {
         ...process.env, CI: '1', EXPO_NO_DOTENV: '1', EXPO_PUBLIC_API_URL: api,
         EXPO_PUBLIC_SUPABASE_URL: authURL,
@@ -89,13 +101,21 @@ async function main() {
         EXPO_PUBLIC_SUPABASE_ANON_KEY: '',
       }, 'expo');
       await ready(web, webChild);
+      }
     } else {
       // Render gratuito puede arrancar en frío; esperar readiness antes de medir los recorridos UI.
       await ready(api + '/api/v1/ready');
-      await ready(web);
+      if (browserSuite) await ready(web);
     }
-    const child = spawn(process.execPath, [localRequire.resolve('@playwright/test/cli'), 'test', '--workers=1', ...cli], {
+    const entry = suite === 'load' ? [resolve(backend, 'qa/load.mjs')] : suite === 'workers' ? [resolve(backend, 'qa/worker-resilience.mjs')] : suite === 'native'
+      ? [localRequire.resolve('tsx/cli'), 'qa/native/android.ts']
+      : [localRequire.resolve('@playwright/test/cli'), 'test', '--workers=1', ...cli];
+    const child = spawn(['load', 'workers'].includes(suite) ? backendNode : process.execPath, entry, {
       stdio: 'inherit', windowsHide: true, env: { ...process.env,
+        E2E_QA_SUITE: suite, QA_API_URL: api, QA_REPORT_DIR: artifacts,
+        QA_NODE_BINARY: backendNode,
+        E2E_QA_AUTH_URL: publicEnv.EXPO_PUBLIC_SUPABASE_URL,
+        E2E_QA_AUTH_KEY: publicEnv.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? publicEnv.EXPO_PUBLIC_SUPABASE_ANON_KEY,
         E2E_MODE: 'real', E2E_QA_AUTHORIZED: '1', E2E_BASE_URL: web,
         E2E_REPORT_DIR: artifacts, E2E_QA_EMAIL: actor('receptor').email, E2E_QA_PASSWORD: actor('receptor').password,
         E2E_QA_WRITE_RUN: fixtureFile ?? '',

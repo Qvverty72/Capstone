@@ -1,0 +1,5 @@
+[
+  { "name": "platform-tools", "url": "https://dl.google.com/android/repository/platform-tools_r37.0.3-win.zip", "sha1": "b3fde5239ad89229d5a9178375b81c9887a24172", "bytes": 8188595, "destination": "." },
+  { "name": "emulator", "url": "https://dl.google.com/android/repository/emulator-windows_x64-16847572.zip", "sha1": "8ef10c10fc89c29099768e0f44cfbdf1d1285ef1", "bytes": 460797045, "destination": "." },
+  { "name": "android-35-x86_64", "url": "https://dl.google.com/android/repository/sys-img/android/x86_64-35_r02.zip", "sha1": "2d857d170c0d1b827149565da34b3383e5306f7f", "bytes": 782404023, "destination": "system-images/android-35/default" }
+]
