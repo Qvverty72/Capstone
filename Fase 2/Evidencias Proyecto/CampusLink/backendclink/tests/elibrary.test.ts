@@ -1,3 +1,4 @@
+import { pgQuery } from './helpers/pg-query.js';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
@@ -46,7 +47,7 @@ before(async () => {
       if (failReference && sql.includes('SELECT EXISTS(SELECT 1 FROM public.archivo_publicacion')) throw new Error('private connection');
       if (failCommit && sql === 'COMMIT') { failCommit = false; throw new Error('failed commit'); }
       if (sql.includes('pg_advisory_xact_lock')) barriers++;
-      const result = await db.query(sql, values);
+      const result = await pgQuery(db, sql, values);
       if (lostCommit && sql === 'COMMIT') { lostCommit = false; throw new Error('lost commit acknowledgement'); }
       return result;
     }, release: () => releaseLease() };

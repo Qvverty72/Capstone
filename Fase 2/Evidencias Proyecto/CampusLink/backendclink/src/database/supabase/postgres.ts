@@ -31,8 +31,10 @@ export async function withPostgresTransaction<T>(operation: (client: PoolClient)
   const client = await getPool().connect();
   let destroy = false;
   try {
-    await client.query('BEGIN');
-    await client.query("SELECT set_config('statement_timeout', $1, true), set_config('lock_timeout', $1, true), set_config('idle_in_transaction_session_timeout', $1, true)", [String(env.databaseTimeoutMs)]);
+    // Un solo viaje de red para abrir y limitar la transacción. El valor procede
+    // de loadEnv (entero 100..60000), nunca de una petición ni de texto libre.
+    const timeout = env.databaseTimeoutMs;
+    await client.query(`BEGIN; SET LOCAL statement_timeout = ${timeout}; SET LOCAL lock_timeout = ${timeout}; SET LOCAL idle_in_transaction_session_timeout = ${timeout}`);
     const result = await operation(client);
     await client.query('COMMIT');
     return result;

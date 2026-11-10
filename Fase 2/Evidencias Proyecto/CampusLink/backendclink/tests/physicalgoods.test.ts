@@ -1,3 +1,4 @@
+import { pgQuery } from './helpers/pg-query.js';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
@@ -63,7 +64,7 @@ before(async () => {
       if (failRequestInsert&&sql.startsWith('INSERT INTO public.solicitud_recurso')) throw new Error('private request SQL failure password');
       if (failAudit && sql.startsWith('INSERT INTO public.auditoria')) throw new Error('private audit SQL failure');
       if (failInsert && sql.startsWith('INSERT INTO public.archivo_publicacion')) throw new Error('private failed SQL password');
-      const result = await db.query(sql, values);
+      const result = await pgQuery(db, sql, values);
       if(onReminderCandidates&&sql.includes('ORDER BY p.publicado_en,p.id LIMIT 100')){
         const operation=onReminderCandidates;onReminderCandidates=null;await operation();
       }

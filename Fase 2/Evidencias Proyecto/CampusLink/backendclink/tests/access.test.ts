@@ -1,3 +1,4 @@
+import { pgQuery } from './helpers/pg-query.js';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -31,8 +32,8 @@ before(async () => {
   mock.method(Pool.prototype, 'connect', async () => {
     if (beforeTransaction) { const hook=beforeTransaction; beforeTransaction=null; await hook(); }
     return { query: (sql: string, params: unknown[] = []) => {
-    if (dbFailure && !['BEGIN','ROLLBACK'].includes(sql)) throw new Error('private database password details');
-    return db.query(sql, params);
+    if (dbFailure && !sql.startsWith('BEGIN') && sql !== 'ROLLBACK') throw new Error('private database password details');
+    return pgQuery(db, sql, params);
   }, release: () => {} }; });
   await db.exec("create role anon; create role authenticated; create role service_role bypassrls; create schema auth; create table auth.users(id uuid primary key,email text,encrypted_password text,created_at timestamptz default now()); create function auth.uid() returns uuid language sql as $$select current_setting('test.user',true)::uuid$$; grant usage on schema public,auth to anon,authenticated,service_role; grant execute on function auth.uid() to authenticated;");
   const schema = await readFile('src/database/supabase/migrations/CampusLink_Schema.sql', 'utf8');

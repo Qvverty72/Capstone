@@ -1,3 +1,4 @@
+import { pgQuery } from './helpers/pg-query.js';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -16,7 +17,7 @@ const reader = randomUUID(), token = 'analytics.test.token';
 const tables = ['institucion','campus','carrera','campus_carrera','perfil_usuario','usuario_carrera','rol','permiso','usuario_rol','usuario_permiso',
   'publicacion_recurso','asignatura','carrera_asignatura','publicacion_carrera','publicacion_asignatura','mensaje_solicitud','solicitud_recurso',
   'interaccion_recurso','reporte_contenido','auditoria','reporte'];
-const client = { query: (sql: string, params?: unknown[]) => db.query(sql, params) } as unknown as PoolClient;
+const client = { query: (sql: string, params?: unknown[]) => pgQuery(db, sql, params) } as unknown as PoolClient;
 const start = new Date('2026-10-10T00:00:00Z'), until = new Date('2026-10-11T00:00:00Z');
 const localStart = new Date('2026-10-10T03:00:00Z'), localUntil = new Date('2026-10-11T03:00:00Z');
 let server: Server, base: string, sqlFailure = false, mongoFailure = false, mongoReads = 0, metricReads = 0, invalidAuth = false;
@@ -39,11 +40,11 @@ before(async () => {
   }
   mock.method(Pool.prototype, 'connect', async () => ({ query: (sql: string, params?: unknown[]) => {
     statements.push(sql);
-    if (sqlFailure && !['BEGIN', 'ROLLBACK'].includes(sql)) throw new Error('private SQL credentials');
+    if (sqlFailure && !sql.startsWith('BEGIN') && sql !== 'ROLLBACK') throw new Error('private SQL credentials');
     if (reportWriteFailure && sql.includes('INSERT INTO public.reporte(')) throw new Error('private report write details');
     if (reportCommitFailure && sql === 'COMMIT' && statements.some(sql => sql.includes('INSERT INTO public.reporte('))) throw new Error('private commit details');
     if (sql.includes('jsonb_to_recordset')) metricReads++;
-    const result = db.query(sql, params);
+    const result = pgQuery(db, sql, params);
     return sql.includes('SELECT snapshot_json FROM public.reporte') && afterSnapshotRead
       ? result.then(async rows => { await afterSnapshotRead?.(); return rows; }) : result;
   }, release() {} }));

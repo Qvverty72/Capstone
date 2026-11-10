@@ -1,3 +1,4 @@
+import { pgQuery } from './helpers/pg-query.js';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
@@ -24,7 +25,7 @@ before(async () => {
     SUPABASE_DB_URL: 'postgresql://postgres:simulated@profile-db-test.invalid/postgres' });
   // Ejecuta servicio/repositorio reales contra PGlite y reemplaza únicamente el transporte.
   mock.method(Pool.prototype, 'connect', async () => ({
-    query: (sql: string, values: unknown[] = []) => db.query(sql, values),
+    query: (sql: string, values: unknown[] = []) => pgQuery(db, sql, values),
     release: () => { releaseCount++; },
   }));
   ({ updateAcademicProfile } = await import('../src/modules/users/services/users.service.js'));

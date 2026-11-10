@@ -32,8 +32,8 @@ test('readiness uses a real SELECT on the same PostgreSQL pool and releases its 
 
 test('transaction uses one leased client, commits and releases it', async () => {
   assert.equal(await withTransaction(async client => { await client.query('SELECT 1'); return 'saved'; }), 'saved');
-  assert.equal(statements[0], 'BEGIN'); assert.ok(statements[1].includes('statement_timeout'));
-  assert.deepEqual(statements.slice(2), ['SELECT 1', 'COMMIT']); assert.deepEqual(released, [false]);
+  assert.match(statements[0], /^BEGIN; SET LOCAL statement_timeout = 5000; SET LOCAL lock_timeout = 5000; SET LOCAL idle_in_transaction_session_timeout = 5000$/);
+  assert.deepEqual(statements.slice(1), ['SELECT 1', 'COMMIT']); assert.deepEqual(released, [false]);
 });
 test('operation failure rolls back and releases; failed rollback destroys the connection', async () => {
   const failure = new Error('operation failed');

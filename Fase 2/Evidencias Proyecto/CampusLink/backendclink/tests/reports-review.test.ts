@@ -1,3 +1,4 @@
+import { pgQuery } from './helpers/pg-query.js';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
@@ -32,7 +33,7 @@ before(async () => {
     SUPABASE_SECRET_KEY: 'sb_secret_test', SUPABASE_DB_URL: 'postgresql://postgres:test@review-test.invalid/postgres' });
   mock.method(Pool.prototype, 'connect', async () => ({ query: (sql: string, values: unknown[] = []) => {
     if (failSql && sql.includes('reporte_contenido')) throw new Error('private SQL password');
-    return db.query(sql, values);
+    return pgQuery(db, sql, values);
   }, release() {} }));
   await db.exec('CREATE SCHEMA auth; CREATE TABLE auth.users(id uuid PRIMARY KEY,email text);');
   const schema = await readFile('src/database/supabase/migrations/CampusLink_Schema.sql', 'utf8');

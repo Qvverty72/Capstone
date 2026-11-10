@@ -30,7 +30,7 @@ before(async () => {
   mock.method(Pool.prototype, 'connect', async () => {
     let saved: Record<string, unknown> | undefined;
     return { release: () => { releaseCount++; }, query: async (sql: string, params: unknown[] = []) => {
-      if (sql === 'BEGIN' || sql.startsWith('SELECT set_config')) return { rows: [] };
+      if (sql.startsWith('BEGIN; SET LOCAL')) return { rows: [] };
       if (sql === 'COMMIT') { if (saved) profile = { ...profile, ...saved }; return { rows: [] }; }
       if (sql === 'ROLLBACK') { rollbackCount++; return { rows: [] }; }
       if (transactionError) throw new Error('private PostgreSQL details');
