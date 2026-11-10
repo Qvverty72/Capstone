@@ -2,6 +2,16 @@ import {randomUUID, randomBytes} from 'node:crypto';
 import {PDFDocument, StandardFonts} from 'pdf-lib';
 
 export const DAY = 86400000;
+// Los identificadores internos conservan guiones; el contenido público cumple la política vigente.
+export const publicTitle = (runId, key) => `${runId} ${key}`.replace(/-/g, ' ');
+export const activityReportFixture = () => ({reason:'ACTIVITY_OTHER',description:'Denuncia sintética de QA sin contenido real'});
+export function qaApiBase(value) {
+  const url = new URL(value);
+  if (url.username || url.password || url.search || url.hash || !['http:', 'https:'].includes(url.protocol)
+    || !['', '/', '/api/v1', '/api/v1/'].includes(url.pathname)) throw new Error('QA_API_URL debe ser un origen HTTP sin credenciales');
+  if (!['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) && url.protocol !== 'https:') throw new Error('QA remota requiere HTTPS');
+  return url.origin + '/api/v1';
+}
 export const actors = ['admin','eventos','consulta','publicador','receptor','nuevo','otra-sede','otra-institucion','suspendido','desactivado'];
 export function newManifest(now = new Date()) {
   const runId = 'QA-' + now.toISOString().replace(/\D/g,'').slice(0,14) + '-' + randomBytes(3).toString('hex');

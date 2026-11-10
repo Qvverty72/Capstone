@@ -9,7 +9,7 @@ import {resolve,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import assert from 'node:assert/strict';
 import {createHash,randomUUID} from 'node:crypto';
-import {newManifest,resourcePlan,activityDates,pdfFixture,pngFixture,DAY,assertOwned} from './fixtures.mjs';
+import {newManifest,resourcePlan,activityDates,pdfFixture,pngFixture,DAY,assertOwned,publicTitle,qaApiBase,activityReportFixture} from './fixtures.mjs';
 
 const backend=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 // Los certificados y demás rutas relativas del entorno parten del backend.
@@ -21,6 +21,9 @@ pg.Client.prototype.query=function(...args){const result=originalQuery.apply(thi
 const root=resolve(backend,'qa/local'),manifestPath=resolve(root,'manifest.json');
 const command=process.argv[2]??'check';
 if(!['check','seed','verify','clean','temporal'].includes(command))throw new Error('Comando: check|seed|verify|clean|temporal');
+if(command!=='check'&&process.env.QA_AUTHORIZED!=='1')throw new Error('Configura QA_AUTHORIZED=1 para operar exclusivamente sobre el manifiesto sintético QA');
+const externalBase=process.env.QA_API_URL?qaApiBase(process.env.QA_API_URL):undefined;
+if(externalBase&&command!=='verify')throw new Error('QA_API_URL solo se admite en verify; la preparación usa la API local sin workers');
 const admin=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SECRET_KEY??process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
 const db=new pg.Client({connectionString:process.env.SUPABASE_DB_URL,ssl:{rejectUnauthorized:true},connectionTimeoutMillis:15000});
 let m,mg,mongoModule,server,base,stage='check';const tokens=new Map();
@@ -31,7 +34,7 @@ async function sqlTransaction(fn){await db.query('BEGIN');try{const value=await 
 const person=actor=>m.users[typeof actor==='number'?actor:m.users.findIndex(u=>u.actor===actor)];
 async function authUser(id){const result=await admin.auth.admin.getUserById(id);if(result.error&&result.error.status!==404)throw new Error('Auth lookup QA no disponible');return result.data.user;}
 async function token(actor){const u=person(actor);if(tokens.has(u.id))return tokens.get(u.id);const auth=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});const r=await auth.auth.signInWithPassword({email:u.email,password:u.password});if(r.error||!r.data.session)throw new Error('Login QA falló: '+u.actor);tokens.set(u.id,r.data.session.access_token);return r.data.session.access_token;}
-async function request(path,actor=4,method='GET',body,status=200){const res=await fetch(base+path,{method,headers:{Authorization:'Bearer '+await token(actor),...(body===undefined||body instanceof FormData?{}:{'Content-Type':'application/json'})},...(body===undefined?{}:{body:body instanceof FormData?body:JSON.stringify(body)})});if(res.status!==status){const error=await res.json().catch(()=>({}));throw new Error(`${method} ${path}: HTTP ${res.status}, esperado ${status}; ${JSON.stringify(error.error??error).slice(0,700)}`);}if(status===204)return null;const ct=res.headers.get('content-type')??'';return ct.includes('json')?(await res.json()).data:Buffer.from(await res.arrayBuffer());}
+async function request(path,actor=4,method='GET',body,status=200){const res=await fetch(base+path,{method,redirect:'error',signal:AbortSignal.timeout(60000),headers:{Authorization:'Bearer '+await token(actor),...(body===undefined||body instanceof FormData?{}:{'Content-Type':'application/json'})},...(body===undefined?{}:{body:body instanceof FormData?body:JSON.stringify(body)})});if(res.status!==status){const error=await res.json().catch(()=>({}));throw new Error(`${method} ${path}: HTTP ${res.status}, esperado ${status}; ${JSON.stringify(error.error??error).slice(0,700)}`);}if(status===204)return null;const ct=res.headers.get('content-type')??'';return ct.includes('json')?(await res.json()).data:Buffer.from(await res.arrayBuffer());}
 const lib=kind=>kind==='physical'?'/marketplace/physicalgoods':'/marketplace/elibrary';
 const pub=key=>m.publications.find(p=>p.key===key);
 const activity=key=>m.activities.find(a=>a.key===key);
@@ -47,7 +50,7 @@ async function check(){
  assert.ok((await db.query("SELECT codigo FROM mensaje_solicitud WHERE activo=true AND codigo='ME_INTERESA'")).rows.length);
  log({target:new URL(process.env.SUPABASE_URL).hostname,mongo:mg.databaseName,check:'ok',command});
 }
-async function openApi(){if(command==='verify'&&process.argv.includes('--running-backend')){base='http://127.0.0.1:3000/api/v1';return;}const {createApp}=await import('../dist/app.js');server=createApp().listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));base=`http://127.0.0.1:${server.address().port}/api/v1`;}
+async function openApi(){if(externalBase){base=externalBase;return;}if(command==='verify'&&process.argv.includes('--running-backend')){base='http://127.0.0.1:3000/api/v1';return;}const {createApp}=await import('../dist/app.js');server=createApp().listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));base=`http://127.0.0.1:${server.address().port}/api/v1`;}
 async function bootstrap(){
  await step('catalog',()=>sqlTransaction(async()=>{
   for(let i=0;i<2;i++)await db.query('INSERT INTO institucion(id,nombre) VALUES($1,$2) ON CONFLICT(id) DO NOTHING',[m.institutions[i],`${m.runId} Institucion ${i?'B':'A'}`]);
@@ -112,10 +115,10 @@ async function resources(){
  const categories=(await db.query('SELECT id FROM categoria_recurso_fisico WHERE activo ORDER BY nombre')).rows;
  for(const kind of ['physical','digital'])for(const p of resourcePlan(kind))await step(p.key,async()=>{
   // Recuperar solo publicación del propietario/campus/título exactos si hubo corte tras POST.
-  const title=`${m.runId} ${p.key}`;let saved;
+  const title=publicTitle(m.runId,p.key);let saved;
   const existing=(await db.query('SELECT id FROM publicacion_recurso WHERE propietario_id=$1 AND campus_id=$2 AND titulo=$3',[person(p.owner).id,m.campuses[p.campus],title])).rows;assert.ok(existing.length<=1,'Publicacion QA duplicada');
   if(existing.length)saved=existing[0];else{
-   const common={title,description:`Recurso ficticio para QA. Caso ${p.key}; sin datos personales.`,modality:p.modality,price:p.modality==='VENTA'?1500+p.n*100:null};
+   const common={title,description:publicTitle('Recurso sintético de prueba QA sin datos personales',p.key),modality:p.modality,price:p.modality==='VENTA'?1500+p.n*100:null};
    if(kind==='physical')saved=await request(lib(kind),p.owner,'POST',{...common,condition:['NUEVO','BUEN_ESTADO','USADO','DETERIORADO'][p.n%4],categoryId:categories[(p.n-1)%categories.length].id,careerId:null,subjectId:null,photo:{name:'imagen.png',mimeType:'image/png',base64:pngFixture.toString('base64')}},201);
    else {const body=new FormData();let careerIds=[],subjectIds=[];
     if(p.campus!==2){if(p.n===3){careerIds=[m.careers[1]];subjectIds=[m.subjects[2]];}else if(p.n===4){careerIds=m.careers;subjectIds=[m.subjects[3]];}else{careerIds=[m.careers[0]];subjectIds=p.n===2?[]:[m.subjects[0]];}}
@@ -147,7 +150,7 @@ async function transitions(){
  await agreement('physical-22',4,'single');await agreement('physical-23');await agreement('physical-24',4,'canceled');
  await step('physical-coordination',async()=>{const p=pub('physical-22'),tx=m.transactions.find(t=>t.key===p.key);await request(`${lib('physical')}/${p.id}/transactions/${tx.id}/messages`,p.owner,'POST',{buildingId:m.maps[0].location.buildingKey,floorId:m.maps[0].location.floorKey},201);});
  await agreement('digital-06');await agreement('digital-06',1);await agreement('digital-07',4,'pending');await agreement('digital-08',4,'single');await agreement('digital-09',4,'canceled');await agreement('digital-10',4,'rejected');await agreement('digital-11');await agreement('digital-24');
- await step('digital-11-edited-terms',async()=>{const p=pub('digital-11');await request(`${lib('digital')}/${p.id}`,p.owner,'PATCH',{title:p.title,description:'Venta adquirida antes de cambiar a donacion. Precio anterior conservado en el acuerdo.',modality:'DONACION',price:null,updatedAt:await version(p.id)});});
+ await step('digital-11-edited-terms',async()=>{const p=pub('digital-11');await request(`${lib('digital')}/${p.id}`,p.owner,'PATCH',{title:p.title,description:'Venta adquirida antes de cambiar a donacion Precio anterior conservado en el acuerdo',modality:'DONACION',price:null,updatedAt:await version(p.id)});});
  for(const key of ['physical-26','digital-23','digital-24'])await step(key+'-withdraw',async()=>{const p=pub(key);const row=(await db.query('SELECT deleted_at FROM publicacion_recurso WHERE id=$1',[p.id])).rows[0];if(!row.deleted_at)await request(`${lib(p.kind)}/${p.id}`,p.owner,'DELETE',{updatedAt:await version(p.id)});});
  await step('controlled-historical-fixtures',()=>sqlTransaction(async()=>{
   for(const key of ['physical-25','digital-22']){const p=pub(key);await db.query("UPDATE publicacion_recurso SET estado_publicacion='OCULTO' WHERE id=$1 AND propietario_id=$2 AND campus_id=$3",[p.id,person(p.owner).id,m.campuses[0]]);}
@@ -159,7 +162,7 @@ async function transitions(){
 async function createActivity(key,owner,day=7,options={}){
  return step('activity-'+key,async()=>{
   const location={...m.maps[person(owner).campus].location,...(options.poi?{poiKey:options.poi}:{})};
-  const dates=activityDates(m.t0,day,options.duration??2*3600000);const body={title:`${m.runId} ${key}`,description:'Actividad ficticia de QA. No representa un evento real.',...dates,location};
+  const dates=activityDates(m.t0,day,options.duration??2*3600000);const body={title:publicTitle(m.runId,key),description:'Actividad sintética de prueba QA sin evento real',...dates,location};
   let doc=await mg.collection('activities').findOne({campusId:m.campuses[person(owner).campus],title:body.title});
   const result=doc?{id:doc._id.toHexString()}:await request('/activities'+(options.official?'/official':''),owner,'POST',body,201);
   const a={id:result.id,key,owner,body};if(!m.activities.some(a=>a.key===key))m.activities.push(a);await save();return a;
@@ -172,7 +175,7 @@ async function activities(){
  for(const key of ['finalizada','oculta','retirada','poi-inactivo'])await createActivity(key,1,14,{official:true,...(key==='poi-inactivo'?{poi:'qa-inactive'}:{})});
  await createActivity('otra-sede',6,8);await createActivity('otra-institucion',7,8);
  await step('activity-series',async()=>{
-  const body={title:`${m.runId} serie-semanal`,description:'Tres ocurrencias oficiales para QA de recurrencia.',...activityDates(m.t0,7),location:m.maps[0].location,recurrence:{frequency:'WEEKLY',interval:1,until:Temporal.Instant.from(m.t0).add({hours:21*24}).toZonedDateTimeISO('America/Santiago').toPlainDate().toString(),timeZone:'America/Santiago',excludedDates:[]}};
+  const body={title:publicTitle(m.runId,'serie semanal'),description:'Tres ocurrencias oficiales para QA de recurrencia',...activityDates(m.t0,7),location:m.maps[0].location,recurrence:{frequency:'WEEKLY',interval:1,until:Temporal.Instant.from(m.t0).add({hours:21*24}).toZonedDateTimeISO('America/Santiago').toPlainDate().toString(),timeZone:'America/Santiago',excludedDates:[]}};
   const existing=await mg.collection('activities').find({campusId:m.campuses[0],title:body.title}).toArray();let occurrences;
   if(existing.length)occurrences=existing.map(d=>({id:d._id.toHexString()}));else{const preview=await request('/activities/series/official/preview',1,'POST',body);const result=await request('/activities/series/official',1,'POST',{...body,previewHash:preview.previewHash},201);occurrences=result.series.occurrences;}
   assert.equal(occurrences.length,3);occurrences.forEach((o,i)=>{if(!m.activities.some(a=>a.id===o.id))m.activities.push({id:o.id,key:'serie-'+(i+1),owner:1});});await save();return {ids:occurrences.map(o=>o.id)};
@@ -188,7 +191,7 @@ async function activities(){
  await step('activity-hidden',()=>mg.collection('activities').updateOne({_id:new ObjectId(activity('oculta').id),campusId:m.campuses[0]},{$set:{visibility:'HIDDEN'}}));
  await step('activity-deleted',async()=>{const a=activity('retirada');const d=await mg.collection('activities').findOne({_id:new ObjectId(a.id)});if(d.status!=='DELETED')await request('/activities/'+a.id,1,'DELETE',{expectedRevision:d.editRevision??0});});
  await step('qa-poi-inactive',()=>mg.collection('campus_maps').updateOne({_id:new ObjectId(m.maps[0].id),campusId:m.campuses[0]},{$set:{'buildings.$[b].floors.$[f].pois.$[p].isVisible':false}},{arrayFilters:[{'b.id':m.maps[0].location.buildingKey},{'f.id':m.maps[0].location.floorKey},{'p.poiKey':'qa-inactive'}]}));
- await step('report-activity',()=>request('/reports/activities/'+activity('oficial-futura').id,4,'POST',{reason:'QA actividad',description:'Denuncia de prueba pendiente.'},201));
+ await step('report-activity',()=>request('/reports/activities/'+activity('oficial-futura').id,4,'POST',activityReportFixture(),201));
 }
 async function accountStates(){for(const [actor,state] of [['suspendido','SUSPENDIDA'],['desactivado','DESACTIVADA']])await step('state-'+actor,async()=>{const path=`/users/access/campuses/${m.campuses[0]}/users/${person(actor).id}`;const detail=await request(path,0);if(detail.accountState!==state)await request(path+'/state',0,'PATCH',{accountState:state,version:detail.version});});}
 async function activityView(){await step('activity-view',async()=>{m.activityViewOperation??=randomUUID();await save();return request('/activities/'+activity('oficial-futura').id+'/interactions',4,'POST',{type:'VIEWED',operationId:m.activityViewOperation});});}
@@ -218,7 +221,7 @@ async function verify(){
  const reminderRows=(await db.query("SELECT publicacion_id,count(*)::int AS count FROM notificacion WHERE publicacion_id=ANY($1::uuid[]) AND tipo_notificacion='PHYSICAL_PUBLICATION_CLOSE_REMINDER' GROUP BY publicacion_id",[[pub('physical-19').id,pub('physical-20').id]])).rows;assert.ok(reminderRows.every(r=>r.count<=1),'Recordatorio duplicado');
  const notificationRows=(await db.query('SELECT tipo_notificacion,count(*)::int AS count FROM notificacion WHERE campus_id=ANY($1::uuid[]) OR publicacion_id=ANY($2::uuid[]) GROUP BY tipo_notificacion',[m.campuses,m.publications.map(p=>p.id)])).rows;
  const related=(await db.query(`SELECT (SELECT count(*)::int FROM solicitud_recurso WHERE publicacion_id=ANY($1::uuid[])) AS requests,(SELECT count(*)::int FROM transaccion_recurso WHERE publicacion_id=ANY($1::uuid[])) AS agreements,(SELECT count(*)::int FROM acceso_recurso_digital WHERE publicacion_id=ANY($1::uuid[])) AS acquisitions,(SELECT count(*)::int FROM valoracion v JOIN transaccion_recurso t ON t.id=v.transaccion_id WHERE t.publicacion_id=ANY($1::uuid[])) AS ratings,(SELECT count(*)::int FROM reporte_contenido WHERE reportante_id=ANY($2::uuid[])) AS reports`,[m.publications.map(p=>p.id),m.users.map(u=>u.id)])).rows[0];
- const report={runId:m.runId,target:new URL(process.env.SUPABASE_URL).hostname,t0:m.t0,verifiedAt:new Date().toISOString(),counts,related,activities:m.activities.length,workers:{reminders:reminderRows,notifications:notificationRows},checks,limits:['Analytics solo health; resolución general de denuncias no implementada.','Registro/OTP/recuperación requieren buzón controlado.','Conflicto F2.9-06/F2.3-05 sobre permisos admin pendiente: no se cambia la matriz.']};await writeFile(resolve(root,'report.json'),JSON.stringify(report,null,2));return report;
+ const report={runId:m.runId,target:new URL(process.env.SUPABASE_URL).hostname,t0:m.t0,verifiedAt:new Date().toISOString(),counts,related,activities:m.activities.length,workers:{reminders:reminderRows,notifications:notificationRows},checks,limits:['Registro y recuperación por OTP requieren buzón controlado','Este verificador no certifica interfaz móvil ni capacidad máxima']};report.apiOrigin=new URL(base).origin;await mkdir(resolve(root,'logs'),{recursive:true});await writeFile(resolve(root,'logs','seed-verify-'+(new URL(base).hostname==='127.0.0.1'?'local':'remote')+'.json'),JSON.stringify(report,null,2));await writeFile(resolve(root,'report.json'),JSON.stringify(report,null,2));return report;
 }
 
 async function docs(){

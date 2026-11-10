@@ -11,7 +11,13 @@
     "start": "node dist/server.js",
     "typecheck": "tsc --project tsconfig.check.json",
     "test": "tsx --test tests/*.test.ts",
-    "check:architecture": "node --experimental-vm-modules scripts/check-architecture.mjs"
+    "check:architecture": "node --experimental-vm-modules scripts/check-architecture.mjs",
+    "qa:check": "node qa/seed.mjs check",
+    "qa:seed": "node qa/seed.mjs seed",
+    "qa:verify": "node qa/seed.mjs verify",
+    "qa:serve": "node qa/serve.mjs",
+    "test:integration": "node qa/integration.mjs",
+    "test:qa": "node --test qa/tests/*.test.mjs"
   },
   "dependencies": {
     "@js-temporal/polyfill": "0.5.1",

@@ -1,8 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newManifest,resourcePlan,activityDates,DAY,assertOwned,pdfFixture,pngFixture} from '../fixtures.mjs';
+import {newManifest,resourcePlan,activityDates,DAY,assertOwned,pdfFixture,pngFixture,publicTitle,qaApiBase,activityReportFixture} from '../fixtures.mjs';
+import {assertPublicContent} from '../../dist/shared/moderation/content-moderation.js';
+import {parseActivityReport} from '../../dist/modules/reports/validators/reports.validation.js';
 import {inflateSync} from 'node:zlib';
 import {PDFDocument} from 'pdf-lib';
+
+test('datos públicos QA cumplen la misma moderación y formato que producción',()=>{
+ const m=newManifest();
+ for(const kind of ['physical','digital'])for(const p of resourcePlan(kind))assert.doesNotThrow(()=>assertPublicContent({title:publicTitle(m.runId,p.key),description:publicTitle('Recurso sintético de prueba QA sin datos personales',p.key)}));
+ for(const key of ['comunitaria futura','oficial futura','serie semanal'])assert.doesNotThrow(()=>assertPublicContent({title:publicTitle(m.runId,key),description:'Actividad sintética de prueba QA sin evento real'}));
+});
+test('el destino QA acepta orígenes seguros y rechaza secretos o rutas arbitrarias',()=>{
+ assert.equal(qaApiBase('http://localhost:3000'),'http://localhost:3000/api/v1');
+ assert.equal(qaApiBase('https://example.onrender.com/api/v1/'),'https://example.onrender.com/api/v1');
+ for(const url of ['http://example.com','https://user:pass@example.com','https://example.com?token=secret','https://example.com/admin','file:///tmp'])assert.throws(()=>qaApiBase(url));
+});
+test('la denuncia QA usa el motivo estructurado exigido por el API real',()=>{
+ assert.equal(parseActivityReport(activityReportFixture()).success,true);
+ assert.equal(parseActivityReport({reason:'QA actividad'}).success,false);
+});
 test('plan conserva aislamiento, volumen para paginar e identidades locales',()=>{
  const m=newManifest(new Date('2026-10-21T12:00:00Z'));
  assert.equal(m.users.length,10);assert.equal(new Set(m.users.map(u=>u.id)).size,10);
