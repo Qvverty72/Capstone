@@ -54,11 +54,22 @@ services:
     runtime: static
     repo: https://github.com/Qvverty72/Capstone
     branch: prerelease
-    rootDir: Fase 2/Evidencias Proyecto/CampusLink/frontendclink
-    buildCommand: npm ci && npm run poi:images && npx expo export --platform web
-    staticPublishPath: ./dist
+    # Ambos frontends se compilan juntos; Render no expone archivos fuera de rootDir.
+    rootDir: Fase 2/Evidencias Proyecto/CampusLink
+    buildCommand: npm --prefix frontendclink ci && npm --prefix frontendclink run build:web
+    staticPublishPath: ./frontendclink/dist
+    buildFilter:
+      paths:
+        - Fase 2/Evidencias Proyecto/CampusLink/frontendclink/**
+        - Fase 2/Evidencias Proyecto/CampusLink/product-analytics-web/**
     autoDeployTrigger: commit
     routes:
+      - type: rewrite
+        source: /analitica-producto
+        destination: /analitica-producto/index.html
+      - type: rewrite
+        source: /analitica-producto/
+        destination: /analitica-producto/index.html
       - type: rewrite
         source: /*
         destination: /index.html
