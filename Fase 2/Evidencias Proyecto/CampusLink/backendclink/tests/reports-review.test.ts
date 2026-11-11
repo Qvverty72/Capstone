@@ -36,6 +36,7 @@ before(async () => {
     return pgQuery(db, sql, values);
   }, release() {} }));
   await db.exec('CREATE SCHEMA auth; CREATE TABLE auth.users(id uuid PRIMARY KEY,email text);');
+  await db.exec('ALTER TABLE auth.users ADD COLUMN created_at timestamptz; CREATE VIEW public.campuslink_auth_directory WITH (security_barrier=true) AS SELECT id,email,created_at FROM auth.users');
   const schema = await readFile('src/database/supabase/migrations/CampusLink_Schema.sql', 'utf8');
   for (const name of ['institucion', 'campus', 'perfil_usuario', 'rol', 'usuario_rol', 'publicacion_recurso',
     'recurso_digital', 'archivo_publicacion', 'mensaje_solicitud', 'solicitud_recurso', 'transaccion_recurso', 'confirmacion_transaccion', 'acceso_recurso_digital', 'reporte_contenido', 'auditoria']) {

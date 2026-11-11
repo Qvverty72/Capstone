@@ -1,5 +1,6 @@
 import { Pool, type PoolClient } from 'pg';
 import { env } from '../../config/env.js';
+import { logEvent } from '../../shared/observability/logger.js';
 
 let pool: Pool | undefined;
 function getPool(): Pool {
@@ -16,10 +17,18 @@ function getPool(): Pool {
   }
   return pool;
 }
+async function acquireClient(): Promise<PoolClient> {
+  const current = getPool();
+  try { return await current.connect(); }
+  catch (error) {
+    logEvent('error', 'postgres.connection_acquisition_failed', { poolTotal: current.totalCount, poolIdle: current.idleCount, poolWaiting: current.waitingCount });
+    throw error;
+  }
+}
 
 /** Uses the same verified TLS pool as business transactions; never changes data. */
 export async function probePostgres(): Promise<void> {
-  const client = await getPool().connect();
+  const client = await acquireClient();
   let destroy = false;
   try { await client.query('SELECT 1'); }
   catch (error) { destroy = true; throw error; }
@@ -28,7 +37,7 @@ export async function probePostgres(): Promise<void> {
 
 /** Ejecuta la operación con timeouts locales y revierte cualquier error antes de liberar el cliente. */
 export async function withPostgresTransaction<T>(operation: (client: PoolClient) => Promise<T>): Promise<T> {
-  const client = await getPool().connect();
+  const client = await acquireClient();
   let destroy = false;
   try {
     // Un solo viaje de red para abrir y limitar la transacción. El valor procede

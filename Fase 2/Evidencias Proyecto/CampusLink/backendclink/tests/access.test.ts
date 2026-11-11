@@ -36,6 +36,8 @@ before(async () => {
     return pgQuery(db, sql, params);
   }, release: () => {} }; });
   await db.exec("create role anon; create role authenticated; create role service_role bypassrls; create schema auth; create table auth.users(id uuid primary key,email text,encrypted_password text,created_at timestamptz default now()); create function auth.uid() returns uuid language sql as $$select current_setting('test.user',true)::uuid$$; grant usage on schema public,auth to anon,authenticated,service_role; grant execute on function auth.uid() to authenticated;");
+  await db.exec('CREATE VIEW public.campuslink_auth_directory WITH (security_barrier=true) AS SELECT id,email,created_at FROM auth.users');
+  await db.exec('GRANT SELECT ON public.campuslink_auth_directory TO service_role');
   const schema = await readFile('src/database/supabase/migrations/CampusLink_Schema.sql', 'utf8');
   for (const name of ['institucion','campus','carrera','asignatura','campus_carrera','carrera_asignatura','perfil_usuario','usuario_carrera','rol','permiso','rol_permiso','usuario_rol','usuario_permiso',
     'publicacion_recurso','categoria_recurso_fisico','recurso_fisico','recurso_digital','archivo_publicacion','mensaje_solicitud','solicitud_recurso','transaccion_recurso','acceso_recurso_digital','reporte_contenido','auditoria']) {

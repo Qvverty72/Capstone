@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './config/load-environment.js';
 
 // La carga dinámica permite que los fallos de configuración y drivers usen el registro seguro.
 async function main(): Promise<void> {

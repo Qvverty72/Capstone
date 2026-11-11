@@ -13,13 +13,13 @@ const registeredProfileColumns = `p.nombre_completo AS "fullName",NULLIF(btrim(u
   COALESCE((SELECT jsonb_agg(jsonb_build_object('id',c.id::text,'name',c.nombre) ORDER BY c.nombre,c.id)
     FROM public.usuario_carrera uc JOIN public.carrera c ON c.id=uc.carrera_id
     WHERE uc.perfil_usuario_id=p.id AND c.institucion_id=$2),'[]'::jsonb) AS careers`;
-const registeredProfileScope = `FROM public.perfil_usuario p LEFT JOIN auth.users u ON u.id=p.id
+const registeredProfileScope = `FROM public.perfil_usuario p LEFT JOIN public.campuslink_auth_directory u ON u.id=p.id
   WHERE p.campus_id=$1 AND p.institucion_id=$2 AND p.id=$3`;
 // Listado y total comparten ámbito y búsqueda antes de paginar.
 const accessUsersScope = `FROM public.perfil_usuario p
   WHERE p.campus_id=$1 AND p.institucion_id=$2 AND p.deleted_at IS NULL
   AND ($3::text='' OR position(lower($3) in lower(p.nombre_completo))>0 OR EXISTS(
-    SELECT 1 FROM auth.users u WHERE u.id=p.id AND position(lower($3) in lower(COALESCE(u.email,'')))>0))`;
+    SELECT 1 FROM public.campuslink_auth_directory u WHERE u.id=p.id AND position(lower($3) in lower(COALESCE(u.email,'')))>0))`;
 // Mismo alcance, filtros y agrupación para la página y su total de cards.
 const publicationTypes = `('publicacion_recurso','PUBLICACION_FISICA','PUBLICACION_DIGITAL')`;
 const auditTargetUuid = `CASE WHEN a.entidad_id ~* '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$' THEN a.entidad_id::uuid END`;

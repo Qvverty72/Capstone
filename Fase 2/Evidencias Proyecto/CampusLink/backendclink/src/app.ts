@@ -1,6 +1,7 @@
 import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
+import { requestLog } from './shared/http/request-log.js';
 import type { Express } from 'express';
 
 import { apiErrorHandler } from './shared/http/error-handler.js';
@@ -28,9 +29,10 @@ export interface AppDependencies {
 export function createApp(dependencies: AppDependencies = {}): Express {
   const app = express();
   app.set('trust proxy', env.trustProxyHops);
+  app.use(requestLog);
 
   app.use(helmet());
-  app.use(cors({ preflightContinue: true, exposedHeaders: ['Retry-After'],
+  app.use(cors({ preflightContinue: true, exposedHeaders: ['Retry-After', 'X-Request-ID'],
     origin: (origin, callback) => callback(null,
       env.nodeEnv !== 'production' && env.corsAllowedOrigins.length === 0 ? '*'
         : !origin || env.corsAllowedOrigins.includes(origin)),

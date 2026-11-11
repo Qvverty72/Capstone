@@ -1,5 +1,6 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { MongoError } from 'mongodb';
+import { logEvent } from '../observability/logger.js';
 
 import { ApiError } from '../errors/api-error.js';
 import { sendApiError } from './api-response.js';
@@ -14,10 +15,6 @@ function isInvalidJson(error: unknown): error is BodyParserError {
     'type' in error &&
     error.type === 'entity.parse.failed'
   );
-}
-
-function getErrorName(error: unknown): string {
-  return error instanceof Error ? error.name : 'UnknownError';
 }
 
 function isPayloadTooLarge(error: unknown): error is BodyParserError {
@@ -49,6 +46,7 @@ export const apiErrorHandler: ErrorRequestHandler = (
   }
 
   if (error instanceof MongoError) {
+    logEvent('error', 'api.dependency_unavailable', { requestId: response.locals.requestId, errorKind: 'mongodb' });
     sendApiError(response, 503, 'DEPENDENCY_UNAVAILABLE', 'Service temporarily unavailable.');
     return;
   }
@@ -59,7 +57,7 @@ export const apiErrorHandler: ErrorRequestHandler = (
     }
 
     if (error.status === 500) {
-      console.error('Unhandled API error', { errorName: getErrorName(error) });
+      logEvent('error', 'api.unhandled_error', { requestId: response.locals.requestId, errorKind: 'application' });
       sendApiError(
         response,
         500,
@@ -70,6 +68,7 @@ export const apiErrorHandler: ErrorRequestHandler = (
     }
 
     if (error.status === 503) {
+      logEvent('error', 'api.dependency_unavailable', { requestId: response.locals.requestId, errorKind: 'dependency' });
       sendApiError(
         response,
         503,
@@ -83,7 +82,7 @@ export const apiErrorHandler: ErrorRequestHandler = (
     return;
   }
 
-  console.error('Unhandled API error', { errorName: getErrorName(error) });
+  logEvent('error', 'api.unhandled_error', { requestId: response.locals.requestId, errorKind: 'unexpected' });
   sendApiError(
     response,
     500,

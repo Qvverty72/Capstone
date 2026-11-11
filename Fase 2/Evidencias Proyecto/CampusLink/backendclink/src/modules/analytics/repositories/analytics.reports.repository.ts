@@ -14,7 +14,7 @@ export async function readAnalyticsPermissions(client: PoolClient, userId: strin
 
 /** Correo del autor al generar; las lecturas históricas no consultan su cuenta actual. */
 export async function readReportAuthorEmail(client: PoolClient, userId: string): Promise<string | null> {
-  const email = (await client.query<{ email: string | null }>('SELECT email FROM auth.users WHERE id=$1', [userId])).rows[0]?.email;
+  const email = (await client.query<{ email: string | null }>('SELECT email FROM public.campuslink_auth_directory WHERE id=$1', [userId])).rows[0]?.email;
   return email?.trim() || null;
 }
 

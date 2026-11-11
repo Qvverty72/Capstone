@@ -18,7 +18,16 @@
     "qa:serve": "node qa/serve.mjs",
     "test:integration": "node qa/integration.mjs",
     "test:qa": "node --test qa/tests/*.test.mjs",
-    "qa:ui:clean": "node qa/ui-fixture.mjs clean"
+    "qa:ui:clean": "node qa/ui-fixture.mjs clean",
+    "ops:backup": "node scripts/backup.mjs create",
+    "ops:restore:verify": "node scripts/backup.mjs verify",
+    "ops:runtime:provision": "node scripts/provision-runtime.mjs --apply",
+    "ops:check": "node scripts/monitor.mjs",
+    "ops:watch": "node scripts/monitor.mjs --watch",
+    "ops:maps:check": "node scripts/ensure-map-indexes.mjs",
+    "ops:runtime:check": "node scripts/check-runtime.mjs",
+    "ops:publications:migrate": "node scripts/apply-publication-migration.mjs",
+    "ops:read-locks:check": "node scripts/check-read-locks.mjs"
   },
   "dependencies": {
     "@js-temporal/polyfill": "0.5.1",

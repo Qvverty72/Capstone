@@ -33,6 +33,7 @@ before(async () => {
     SUPABASE_URL: 'https://dashboard-test.invalid', SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test',
     SUPABASE_DB_URL: 'postgresql://postgres:simulated@dashboard-test.invalid/postgres' });
   await db.exec('CREATE SCHEMA auth; CREATE TABLE auth.users(id uuid PRIMARY KEY, email text);');
+  await db.exec('ALTER TABLE auth.users ADD COLUMN created_at timestamptz; CREATE VIEW public.campuslink_auth_directory WITH (security_barrier=true) AS SELECT id,email,created_at FROM auth.users');
   const schema = await readFile('src/database/supabase/migrations/CampusLink_Schema.sql', 'utf8');
   for (const table of tables) {
     const ddl = schema.match(new RegExp('CREATE TABLE public\\.' + table + ' \\([\\s\\S]*?\\n\\);'))?.[0];

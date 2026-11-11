@@ -29,6 +29,15 @@ after(async () => { await closePostgres(); mock.restoreAll(); });
 test('readiness uses a real SELECT on the same PostgreSQL pool and releases its client', async () => {
   await probePostgres(); assert.deepEqual(statements, ['SELECT 1']); assert.deepEqual(released, [false]);
 });
+test('connection acquisition failure logs pool counters without driver details', async () => {
+  const messages: string[] = [], logger = mock.method(console, 'error', message => messages.push(String(message)));
+  connectFails = true;
+  try {
+    await assert.rejects(probePostgres());
+    const record = JSON.parse(messages[0]); assert.equal(record.event, 'postgres.connection_acquisition_failed');
+    assert.equal(typeof record.poolWaiting, 'number'); assert.ok(!messages.join('').includes('private connection details'));
+  } finally { logger.mock.restore(); }
+});
 
 test('transaction uses one leased client, commits and releases it', async () => {
   assert.equal(await withTransaction(async client => { await client.query('SELECT 1'); return 'saved'; }), 'saved');

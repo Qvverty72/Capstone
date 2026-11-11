@@ -5,11 +5,16 @@ import {dirname,resolve} from 'node:path';
 import pg from 'pg';
 process.chdir(resolve(dirname(fileURLToPath(import.meta.url)), '..'));
 dotenv.config({quiet:true});
+dotenv.config({path:'.env.runtime.local',override:true,quiet:true});
 if(process.env.QA_AUTHORIZED!=='1')throw new Error('Se requiere QA_AUTHORIZED=1');
 if(!process.env.RATE_LIMIT_REDIS_URL)throw new Error('Configura RATE_LIMIT_REDIS_URL con el Redis local QA antes de iniciar');
 if(process.env.QA_SQL_DIAGNOSTICS==='1'){
  const query=pg.Client.prototype.query;
- pg.Client.prototype.query=function(...args){const result=query.apply(this,args);return result?.catch?result.catch(error=>{console.error(JSON.stringify({qaSqlError:true,code:error.code,routine:error.routine}));throw error;}):result;};
+ pg.Client.prototype.query=function(...args){const started=performance.now();const result=query.apply(this,args);return result?.catch?result.catch(error=>{
+  const sql=typeof args[0]==='string'?args[0]:args[0]?.text??'';
+  console.error(JSON.stringify({qaSqlError:true,code:error.code,routine:error.routine,
+   tables:[...new Set([...sql.matchAll(/public\.([a-z_]+)/g)].map(match=>match[1]))],rowLock:/FOR (?:NO KEY )?(?:UPDATE|SHARE)/i.test(sql),durationMs:Math.round(performance.now()-started)}));throw error;
+ }):result;};
 }
 process.env.PORT=process.env.QA_PORT??'3011';
 process.env.NODE_ENV='development';

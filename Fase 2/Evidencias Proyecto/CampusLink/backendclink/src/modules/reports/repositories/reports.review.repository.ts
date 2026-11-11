@@ -74,7 +74,7 @@ export async function readReportPeople(client: PoolClient, report: ReportReviewD
   }
   const ids = [...new Set([reporterId, reportedId, decisionId].filter((id): id is string => !!id))];
   const rows = ids.length ? (await client.query<ReportPerson>(`SELECT p.id,NULLIF(btrim(p.nombre_completo),'') AS name,
-    NULLIF(btrim(u.email),'') AS email FROM public.perfil_usuario p LEFT JOIN auth.users u ON u.id=p.id
+    NULLIF(btrim(u.email),'') AS email FROM public.perfil_usuario p LEFT JOIN public.campuslink_auth_directory u ON u.id=p.id
     WHERE p.id=ANY($1::uuid[])`, [ids])).rows : [];
   const byId = new Map(rows.map(row => [row.id, row]));
   const person = (id: string | null) => id ? byId.get(id) ?? { id, name: null, email: null } : null;
