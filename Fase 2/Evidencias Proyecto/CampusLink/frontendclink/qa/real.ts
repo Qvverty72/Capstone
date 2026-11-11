@@ -12,7 +12,8 @@ async function main() {
   const suite = args.find(arg => arg.startsWith('--suite='))?.slice(8) ?? 'default';
   if (!['default', 'resilience', 'load', 'native', 'auth', 'workers'].includes(suite)) throw new Error('Suite QA desconocida');
   const writeMode = args.includes('--write');
-  const cli = args.filter(arg => arg !== '--write' && !arg.startsWith('--suite='));
+  const staticWeb = args.includes('--static');
+  const cli = args.filter(arg => arg !== '--write' && arg !== '--static' && !arg.startsWith('--suite='));
   const target = cli.shift() ?? 'local';
   if (!['local', 'render'].includes(target) || process.env.QA_AUTHORIZED !== '1') {
     throw new Error('Uso: QA_AUTHORIZED=1 npm run test:e2e:real -- local|render');
@@ -40,7 +41,7 @@ async function main() {
   }
   if (suite === 'native' && target !== 'render') throw new Error('El APK disponible apunta a Render; no certifica un backend local');
   const browserSuite = !['load', 'native', 'workers'].includes(suite);
-  const artifacts = resolve('qa/.artifacts/real-' + target + (suite === 'default' ? (writeMode ? '-write' : '') : '-' + suite));
+  const artifacts = resolve('qa/.artifacts/real-' + target + (suite === 'default' ? (writeMode ? '-write' : '') : '-' + suite) + (staticWeb ? '-static' : ''));
   await mkdir(artifacts, { recursive: true });
   const localRequire = createRequire(resolve('package.json'));
   const children: ChildProcess[] = [];
@@ -91,15 +92,21 @@ async function main() {
       const authURL = publicEnv.EXPO_PUBLIC_SUPABASE_URL;
       if (!authURL || new URL(authURL).hostname !== manifest.target.supabase) throw new Error('Supabase web no coincide con el manifiesto QA');
       const apiChild = await launch(['qa/serve.mjs'], backend,
-        { ...process.env, QA_PORT: '3011', QA_SQL_DIAGNOSTICS: writeMode ? '1' : '', RATE_LIMIT_REDIS_URL: process.env.QA_REDIS_URL ?? 'redis://127.0.0.1:16379' }, 'api', backendNode);
+        { ...process.env, QA_PORT: '3011', QA_SQL_DIAGNOSTICS: writeMode || staticWeb ? '1' : '', RATE_LIMIT_REDIS_URL: process.env.QA_REDIS_URL ?? 'redis://127.0.0.1:16379' }, 'api', backendNode);
       await ready(api + '/api/v1/ready', apiChild);
       if (browserSuite) {
-      const webChild = await launch([localRequire.resolve('expo/bin/cli'), 'start', '--web', '--localhost', '--port', '8090'], process.cwd(), {
-        ...process.env, CI: '1', EXPO_NO_DOTENV: '1', EXPO_PUBLIC_API_URL: api,
+      const webEnv = {
+        ...process.env, CI: '1', EXPO_NO_DOTENV: '1', EXPO_PUBLIC_API_URL: staticWeb ? web : api,
         EXPO_PUBLIC_SUPABASE_URL: authURL,
         EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: publicEnv.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
         EXPO_PUBLIC_SUPABASE_ANON_KEY: '',
-      }, 'expo');
+      };
+      if (staticWeb) {
+        const build = await launch([localRequire.resolve('expo/bin/cli'), 'export', '--platform', 'web', '--clear'], process.cwd(), webEnv, 'export');
+        const result = await new Promise<number>(done => { build.once('exit', n => done(n ?? 1)); build.once('error', () => done(1)); });
+        if (result !== 0) throw new Error('Falló la exportación web; revisar export.log');
+      }
+      const webChild = await launch(staticWeb ? ['qa/static.mjs'] : [localRequire.resolve('expo/bin/cli'), 'start', '--web', '--localhost', '--port', '8090'], process.cwd(), webEnv, staticWeb ? 'static' : 'expo');
       await ready(web, webChild);
       }
     } else {
@@ -112,7 +119,7 @@ async function main() {
       : [localRequire.resolve('@playwright/test/cli'), 'test', '--workers=1', ...cli];
     const child = spawn(['load', 'workers'].includes(suite) ? backendNode : process.execPath, entry, {
       stdio: 'inherit', windowsHide: true, env: { ...process.env,
-        E2E_QA_SUITE: suite, QA_API_URL: api, QA_REPORT_DIR: artifacts,
+        E2E_QA_SUITE: suite, E2E_STATIC_WEB: staticWeb ? '1' : '', QA_API_URL: api, QA_REPORT_DIR: artifacts,
         QA_NODE_BINARY: backendNode,
         E2E_QA_AUTH_URL: publicEnv.EXPO_PUBLIC_SUPABASE_URL,
         E2E_QA_AUTH_KEY: publicEnv.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? publicEnv.EXPO_PUBLIC_SUPABASE_ANON_KEY,

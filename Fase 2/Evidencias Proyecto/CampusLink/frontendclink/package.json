@@ -32,7 +32,8 @@
     "test:e2e:auth": "tsx qa/real.ts --write --suite=auth",
     "test:workers:real": "tsx qa/real.ts --write --suite=workers",
     "qa:android:start": "node qa/native/emulator.mjs start",
-    "qa:android:stop": "node qa/native/emulator.mjs stop"
+    "qa:android:stop": "node qa/native/emulator.mjs stop",
+    "test:e2e:secure": "tsx qa/real.ts --write --static"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -41,7 +42,7 @@
     "@react-three/fiber": "^9.8.2",
     "@supabase/supabase-js": "^2.117.3",
     "babel-preset-expo": "~58.0.0",
-    "expo": "~58.0.19",
+    "expo": "~58.0.23",
     "expo-asset": "~58.0.18",
     "expo-blur": "~58.0.5",
     "expo-constants": "~58.0.13",
@@ -74,12 +75,17 @@
     "@types/react": "~19.3.0",
     "@types/three": "^0.185.0",
     "ffmpeg-static": "5.3.0",
+    "js-yaml": "5.5.0",
     "tailwindcss": "^3.4.0",
-    "tsx": "4.21.0",
+    "tsx": "4.23.15",
     "typescript": "~6.0.3"
   },
   "overrides": {
-    "three": "$three"
+    "three": "$three",
+    "glob": "14.0.4",
+    "@expo/fingerprint": {
+      "minimatch": "11.0.7"
+    }
   },
   "engines": {
     "node": "^22.13.0 || ^24.3.0 || >=26.0.0"

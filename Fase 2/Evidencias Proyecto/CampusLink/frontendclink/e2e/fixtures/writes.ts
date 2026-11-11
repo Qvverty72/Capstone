@@ -2,6 +2,7 @@ import { test as base, expect, type Page, type BrowserContext } from '@playwrigh
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { login } from '../helpers/auth';
+import { installCspCheck, assertNoCspViolations } from '../helpers/csp';
 import { isReal } from '../../qa/environment';
 
 export type Actor = 'propietario' | 'receptor' | 'admin' | 'sujeto';
@@ -27,6 +28,7 @@ export const test = base.extend<{ ui: UIHarness }>({
           if (pages.has(actor)) return pages.get(actor)!;
           const context = await browser.newContext({ baseURL: base.info().project.use.baseURL, viewport: { width: 390, height: 844 }, serviceWorkers: 'block', acceptDownloads: true });
           contexts.push(context); const page = await context.newPage();
+          await installCspCheck(page);
           page.setDefaultTimeout(15_000); page.setDefaultNavigationTimeout(60_000);
           page.on('response', response => {
             const url = new URL(response.url());
@@ -52,7 +54,9 @@ export const test = base.extend<{ ui: UIHarness }>({
           await base.info().attach('interfaz-' + actor, { body: text.slice(0, 20000), contentType: 'text/plain' });
         }
       }
-      for (const context of contexts) await context.close();
+      try {
+        for (const page of pages.values()) await assertNoCspViolations(page);
+      } finally { for (const context of contexts) await context.close(); }
     }
   },
 });
