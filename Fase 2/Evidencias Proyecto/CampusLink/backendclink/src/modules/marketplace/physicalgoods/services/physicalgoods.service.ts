@@ -2,6 +2,7 @@ import { createModuleHealthCheck } from '../../../../shared/health/module-health
 import { probePhysicalgoodsDependencies } from '../repositories/physicalgoods.repository.js';
 import type { PhysicalgoodsHealth } from '../types/physicalgoods.types.js';
 import { randomUUID } from 'node:crypto';
+import { publicationOperation, previousPublication, recordPublicationOperation } from '../../../../database/supabase/publication-operation.js';
 import { ApiError } from '../../../../shared/errors/api-error.js';
 import { assertPublicContent } from '../../../../shared/moderation/content-moderation.js';
 import { requireCampusCapability } from '../../../auth/domain/auth.authorization.js';
@@ -36,26 +37,31 @@ export async function getPhysicalgoodsOptions(auth: VerifiedAuthConnection) {
  * Crea una publicación y su referencia de imagen, con auditoría dentro de la transacción SQL.
  * Sube primero a Storage para no retener bloqueos durante I/O y compensa archivos sin referencia ante fallos.
  */
-export async function createPhysicalgoods(auth: VerifiedAuthConnection, body: unknown): Promise<PhysicalgoodsCreated> {
+export async function createPhysicalgoods(auth: VerifiedAuthConnection, body: unknown, operationKey?: unknown): Promise<PhysicalgoodsCreated> {
   requireCampusCapability(auth, auth.campusId, 'general');
   const { input, photo } = parsePhysicalgoods(body);
   assertPublicContent({ title: input.title, description: input.description });
-  const id = randomUUID();
+  const operation = publicationOperation('FISICO', auth.userId, auth.campusId, operationKey, { input, name: photo.name, mimeType: photo.mimeType }, photo.bytes);
+  const id = operation?.id ?? randomUUID();
+  const receipt = (): PhysicalgoodsCreated => ({ ...input, id, campusId: auth.campusId, ownerId: auth.userId, status: 'DISPONIBLE', currency: 'CLP' });
+  if (operation && await dependency(() => withPhysicalgoodsTransaction(client => previousPublication(client, operation)))) return receipt();
   const extension = photo.mimeType === 'image/jpeg' ? 'jpg' : photo.mimeType === 'image/png' ? 'png' : 'webp';
-  const path = `${auth.campusId}/${auth.userId}/${id}/principal.${extension}`;
+  const path = `${auth.campusId}/${auth.userId}/${id}/${operation ? randomUUID() + '-' : ''}principal.${extension}`;
   // Sube los bytes antes de abrir la transacción SQL para no mantener bloqueos durante I/O de red.
   // Ante carga fallida o ambigua, limpia la ruta única generada por el servidor si no tiene referencia.
   let attemptedPersistence = false;
   try {
     await uploadPrincipalPhoto(path, photo);
     attemptedPersistence = true;
-    return await withPhysicalgoodsTransaction(async client => {
+    let replay = false;
+    const result = await withPhysicalgoodsTransaction(async client => {
       const { profile, roles } = await lockPhysicalgoodsPublisher(client, auth.userId);
       if (!profile || profile.campus_id !== auth.campusId || profile.institucion_id !== auth.profile.institucion_id) {
         throw new ApiError(409, 'CONFLICT', 'Tu campus cambió. Recarga el formulario antes de publicar.');
       }
       const current = { ...auth, campusId: profile.campus_id, profile, roles };
       requireCampusCapability(current, current.campusId, 'general');
+      if (await previousPublication(client, operation, true)) { replay = true; return receipt(); }
       const catalog = await findPhysicalgoodsCatalog(client, current.campusId);
       validateCampus(current, catalog);
       const invalid = (field: string, message: string): never => { throw new ApiError(400, 'VALIDATION_ERROR', message, { details: [{ field, message }] }); };
@@ -64,9 +70,14 @@ export async function createPhysicalgoods(auth: VerifiedAuthConnection, body: un
       if (input.subjectId && !catalog.subjects.some(row => row.id === input.subjectId)) invalid('subjectId', 'Selecciona una asignatura ofrecida en tu campus.');
       const publication: PhysicalgoodsCreated = { ...input, id, campusId: current.campusId, ownerId: current.userId, status: 'DISPONIBLE', currency: 'CLP' };
       await insertPhysicalgoods(client, publication, photo, path);
+      await recordPublicationOperation(client, operation);
       await auditPhysicalgoods(client, current, id, 'PUBLICAR_PUBLICACION', null, await physicalgoodsSnapshot(client, id));
       return publication;
     });
+    if (replay) {
+      try { await removePrincipalPhoto(path); } catch { console.error('Physical retry upload cleanup unavailable'); }
+    }
+    return result;
   } catch (error) {
     try {
       // COMMIT puede confirmarse y perderse su respuesta; conserva los bytes que ya tengan referencia.

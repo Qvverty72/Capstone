@@ -2,6 +2,7 @@ import {randomUUID,randomBytes} from 'node:crypto';
 import assert from 'node:assert/strict';
 export const uiActors=['propietario','receptor','admin','sujeto'];
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const publicationUuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export function newUIManifest(runId,apiOrigin,now=new Date()) {
  assert.match(runId,uuid);
  const prefix='QAUI '+now.toISOString().replace(/\D/g,'').slice(0,14)+' '+parseInt(runId.slice(0,8),16);
@@ -21,5 +22,5 @@ export function assertUIResources(m,rows) {
 }
 export function assertUIStorage(m,objects) {
  assertUIManifest(m);
- for(const object of objects){const [campus,owner,publication]=object.storage_path.split('/');assert.equal(campus,m.campus);assert.ok(m.users.some(u=>u.id===owner));assert.match(publication,uuid);assert.ok(['publication-images','digital-resources'].includes(object.bucket_id));}
+ for(const object of objects){const [campus,owner,publication]=object.storage_path.split('/');assert.equal(campus,m.campus);assert.ok(m.users.some(u=>u.id===owner));assert.match(publication,publicationUuid);assert.ok(['publication-images','digital-resources'].includes(object.bucket_id));}
 }

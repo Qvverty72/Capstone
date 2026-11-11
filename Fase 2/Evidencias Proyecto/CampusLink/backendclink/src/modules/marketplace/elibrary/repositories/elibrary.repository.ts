@@ -18,8 +18,8 @@ export async function findDigitalCampus(client: PoolClient, campusId: string) {
      JOIN public.institucion i ON i.id=c.institucion_id WHERE c.id=$1 FOR SHARE OF c,i`, [campusId])).rows[0] ?? null;
 }
 /** La misma barrera permite esperar una transacción cuyo COMMIT haya perdido la respuesta. */
-export async function lockDigitalPersistence(client: PoolClient, id: string) {
-  await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [id]);
+export async function lockDigitalPersistence(client: PoolClient, id: string, readOnly = false) {
+  await client.query(`SELECT ${readOnly?'pg_advisory_xact_lock_shared':'pg_advisory_xact_lock'}(hashtextextended($1,0))`, [id]);
 }
 export async function insertDigitalPublication(client: PoolClient,
   publication: Pick<DigitalPublication, 'id' | 'campusId' | 'ownerId' | 'title' | 'description' | 'modality' | 'price'>,
@@ -114,12 +114,12 @@ export async function findOwnedDigitalActivity(client: PoolClient, institutionId
      WHERE p.id=ANY($1::uuid[]) AND p.tipo_recurso='DIGITAL' AND p.propietario_id=$2 AND campus.institucion_id=$3`, [ids,ownerId,institutionId])).rows;
 }
 
-export async function findDigitalResource(client: PoolClient, id: string, institutionId: string) {
+export async function findDigitalResource(client: PoolClient, id: string, institutionId: string, readOnly = false) {
   return (await client.query<DigitalResourceRow>(
     `SELECT p.id,p.campus_id,p.propietario_id,p.titulo AS title,p.estado_publicacion,p.deleted_at,c.institucion_id
      FROM public.publicacion_recurso p JOIN public.recurso_digital d ON d.publicacion_id=p.id
      JOIN public.campus c ON c.id=p.campus_id
-     WHERE p.id=$1 AND p.tipo_recurso='DIGITAL' AND c.institucion_id=$2 FOR NO KEY UPDATE OF p`, [id, institutionId])).rows[0] ?? null;
+     WHERE p.id=$1 AND p.tipo_recurso='DIGITAL' AND c.institucion_id=$2 ${readOnly?'FOR SHARE':'FOR NO KEY UPDATE'} OF p`, [id, institutionId])).rows[0] ?? null;
 }
 
 /** Solo detalle autorizado: perfil público y agregados digitales de la misma institución, sin identidades de receptores. */

@@ -9,6 +9,7 @@ import ts from 'typescript';
 import * as jsx from 'react/jsx-runtime';
 
 function load(file, dependencies, globals = {}) {
+  dependencies = { '@/lib/api/operation-id': { operationId: () => crypto.randomUUID() }, ...dependencies };
   const source = fs.readFileSync(new URL('../src/features/marketplace/' + file, import.meta.url), 'utf8');
   const module = { exports: {} };
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;

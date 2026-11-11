@@ -25,15 +25,15 @@ const conflict = (message: string) => new ApiError(409,'CONFLICT',message);
 /** Perfiles ordenados → barrera de persistencia → publicación → solicitud/acuerdo. */
 export async function withDigitalTradeContext<T>(auth: VerifiedAuthConnection, rawId: unknown,
   operation: (client: PoolClient, resource: DigitalResourceRow, current: VerifiedAuthConnection) => Promise<T>,
-  ids: {requestId?:string;tradeId?:string} = {}) {
+  ids: {requestId?:string;tradeId?:string;readOnly?:boolean} = {}) {
   authorizeDigitalAccess(auth); const id=digitalId(rawId);
   try { return await withPostgresTransaction(async client => {
     const participants=await digitalTradeParticipants(client,id,auth.profile.institucion_id,ids.requestId??null,ids.tradeId??null);
     if(!participants || (ids.tradeId && ![participants.ownerId,participants.receiverId].includes(auth.userId)))throw missing();
     if(ids.requestId && participants.ownerId!==auth.userId)throw new ApiError(403,'FORBIDDEN','Solo el propietario puede resolver solicitudes.');
-    await lockDigitalProfiles(client,[...new Set([auth.userId,participants.ownerId,...(participants.receiverId?[participants.receiverId]:[])])].sort());
-    const {current,campus}=await currentDigitalContext(client,auth); await lockDigitalPersistence(client,id);
-    const resource=await findDigitalResource(client,id,campus.institucion_id);
+    await lockDigitalProfiles(client,[...new Set([auth.userId,participants.ownerId,...(participants.receiverId?[participants.receiverId]:[])])].sort(),ids.readOnly);
+    const {current,campus}=await currentDigitalContext(client,auth,ids.readOnly?'read':'write'); await lockDigitalPersistence(client,id,ids.readOnly);
+    const resource=await findDigitalResource(client,id,campus.institucion_id,ids.readOnly);
     if(!resource)throw missing();if(resource.propietario_id!==participants.ownerId)throw conflict('La publicación cambió. Recarga el recurso.');
     return operation(client,resource,current);
   });} catch(error) {if(error instanceof ApiError)throw error;throw new ApiError(503,'DEPENDENCY_UNAVAILABLE','No se pudo confirmar la operación. Revisa su estado antes de reintentar.');}
@@ -66,7 +66,7 @@ export async function getDigitalRequestOptions(auth:VerifiedAuthConnection,id:un
     const active=await activeDigitalRequest(client,resource.id,current.userId), acquired=await hasDigitalAcquisition(client,resource.id,resource.propietario_id,current.userId);
     const canRequest=current.userId!==resource.propietario_id&&!active&&!acquired&&await digitalMembersEnabled(client,[current.userId,resource.propietario_id],resource.institucion_id);
     return {canRequest,acquired,activeRequestId:active?.id??null,messages:canRequest?await digitalRequestMessages(client):[]};
-  });
+  },{readOnly:true});
 }
 export async function createDigitalRequest(auth:VerifiedAuthConnection,id:unknown,raw:unknown,rawOperationId?:unknown) {
   const {messageCode}=digitalAction(raw,['messageCode']);if(typeof messageCode!=='string'||!messageCode.trim()||messageCode.length>200)invalidDigital('messageCode','Selecciona un mensaje disponible.');
@@ -96,7 +96,7 @@ export function digitalHistoryPage(raw: unknown) {
 export async function getDigitalRequests(auth:VerifiedAuthConnection,query:unknown,received:boolean) {
   authorizeDigitalAccess(auth); const page=digitalHistoryPage(query);
   try {return await withPostgresTransaction(async client=>{
-    const {current,campus}=await currentDigitalContext(client,auth);
+    const {current,campus}=await currentDigitalContext(client,auth,'read');
     const result=createPaginatedResult(await listDigitalRequests(client,campus.institucion_id,current.userId,received,page),page);
     return {...result,data:result.data.map(requestDto)};
   });}catch(error){if(error instanceof ApiError)throw error;throw new ApiError(503,'DEPENDENCY_UNAVAILABLE','No se pudieron cargar las solicitudes.');}
@@ -123,7 +123,7 @@ export async function resolveDigitalRequest(auth:VerifiedAuthConnection,id:unkno
 }
 export async function getDigitalTrade(auth:VerifiedAuthConnection,id:unknown,rawTrade:unknown) {
   const tradeId=digitalId(rawTrade,'transactionId');
-  return withDigitalTradeContext(auth,id,async(client,resource,current)=>{const trade=await findDigitalTrade(client,resource.id,tradeId);if(!trade)throw missing();return digitalTradeDto(client,resource,current,trade);},{tradeId});
+  return withDigitalTradeContext(auth,id,async(client,resource,current)=>{const trade=await findDigitalTrade(client,resource.id,tradeId);if(!trade)throw missing();return digitalTradeDto(client,resource,current,trade);},{tradeId,readOnly:true});
 }
 export async function transitionDigitalTrade(auth:VerifiedAuthConnection,id:unknown,rawTrade:unknown,raw:unknown,action:'CONFIRMAR'|'CANCELAR') {
   digitalAction(raw); const tradeId=digitalId(rawTrade,'transactionId');

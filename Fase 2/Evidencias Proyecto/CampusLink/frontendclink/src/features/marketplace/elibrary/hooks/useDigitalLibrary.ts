@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { AuthApiError, apiFormErrorMessage } from '@/lib/api/authenticated-request';
+import { operationId } from '@/lib/api/operation-id';
 import { recordResourceOpening } from '../../api/resourceInteractions';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { attachDigitalFile, downloadDigitalFile, loadDigitalAcademicCatalog, loadDigitalPublication, searchDigitalPublications, publishDigitalPublication, updateDigitalAcademics } from '../api/elibraryApi';
@@ -10,6 +11,7 @@ import type { DigitalAcademicCatalog, DigitalAttachment, DigitalFile, DigitalFil
 import { publicationTextError } from '@/lib/validation/public-content';
 
 export function useDigitalLibrary() {
+  const attempt = useRef<{ payload: string; key: string } | null>(null);
   const auth = useAuth();
   const [items, setItems] = useState<DigitalPublication[]>([]), [detail, setDetail] = useState<DigitalPublication | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null), [detailLoading, setDetailLoading] = useState(false);
@@ -99,7 +101,10 @@ export function useDigitalLibrary() {
       let publication = currentTarget.current;
       if (!publication) {
         setProgress(`Publicando ${queue.current[0].name}`);
-        publication = await publishDigitalPublication({ title, description, modality, price: modality === 'VENTA' ? numericPrice : null, careerIds, subjectIds }, queue.current[0], abort.signal);
+        const input: DigitalInput = { title, description, modality, price: modality === 'VENTA' ? numericPrice : null, careerIds, subjectIds };
+        const file = queue.current[0], payload = JSON.stringify({ input, uri: file.uri, name: file.name, size: file.sizeBytes });
+        if (attempt.current?.payload !== payload) attempt.current = { payload, key: operationId() };
+        publication = await publishDigitalPublication(input, file, abort.signal, attempt.current.key);
         if (abort.signal.aborted) return;
         currentTarget.current = publication; setTarget(publication);
         releaseDigitalFile(queue.current.shift()!); setFiles([...queue.current]);
@@ -118,6 +123,7 @@ export function useDigitalLibrary() {
       currentTarget.current = publication; setTarget(publication);
       setItems(previous => [publication, ...previous.filter(item => item.id !== publication.id)]);
       setDetail(publication); setFormOpen(false); setNotice(attachMode ? 'Los archivos se adjuntaron correctamente.' : 'Tu recurso ya está publicado y disponible para tu institución.');
+      attempt.current = null;
       setTitle(''); setDescription(''); setPrice(''); setModality('VENTA'); setFiles([]); setCareerIds([]); setSubjectIds([]);
       currentTarget.current = null; setTarget(null); setAttachMode(false);
       setRevision(value => value + 1);

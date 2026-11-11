@@ -10,7 +10,7 @@ export async function getDigitalAcademicCatalog(auth: VerifiedAuthConnection) {
   authorizeDigitalAccess(auth);
   try {
     return await withPostgresTransaction(async client => {
-      const { campus } = await currentDigitalContext(client, auth);
+      const { campus } = await currentDigitalContext(client, auth, 'read');
       return findDigitalAcademicCatalog(client, campus.institucion_id);
     });
   } catch (error) {

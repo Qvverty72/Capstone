@@ -84,10 +84,10 @@ export const savePhysicalgoodsCategory = (id: string, categoryId: string, signal
 /** Carga campus y catálogos permitidos para publicación y filtros. */
 export const loadPublicationOptions = (signal: AbortSignal) => authenticatedRequest<PublicationOptions>(path + '/options', { signal });
 /** Publica el recurso principal y transforma errores de validación conocidos en mensajes de UI. */
-export async function publishPhysicalgoods(input: PublicationInput, signal: AbortSignal) {
+export async function publishPhysicalgoods(input: PublicationInput, signal: AbortSignal, operationKey?: string) {
   try {
     return await authenticatedRequest<PublicationCreated>(path, { method: 'POST', signal,
-      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) });
+      headers: { 'Content-Type': 'application/json', ...(operationKey ? { 'Idempotency-Key': operationKey } : {}) }, body: JSON.stringify(input) });
   } catch (error) {
     if (error instanceof AuthApiError && error.status === 400) throw new Error(apiFormErrorMessage(error, 'Revisa los datos de la publicación.'));
     if (error instanceof AuthApiError && error.status === 413) throw new Error('La fotografía debe pesar como máximo 5 MB.');

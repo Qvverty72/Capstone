@@ -9,7 +9,7 @@ import * as jsx from 'react/jsx-runtime';
 import { renderCatalog } from './helpers/marketplace-render.mjs';
 const noop=()=>{};
 class AuthApiError extends Error {}
-function load(file,deps){const module={exports:{}};const code=ts.transpileModule(fs.readFileSync(new URL('../src/features/marketplace/'+file,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
+function load(file,deps){deps={'@/lib/api/operation-id':{operationId:()=>crypto.randomUUID()},...deps};const module={exports:{}};const code=ts.transpileModule(fs.readFileSync(new URL('../src/features/marketplace/'+file,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
 vm.runInNewContext(code,{module,exports:module.exports,AbortController,Error,TypeError,require:name=>{ if (name.endsWith('/lib/validation/public-content')) return publicContent; assert.ok(Object.hasOwn(deps,name),name);return deps[name];}});return module.exports;}
 function runtime() {
   const slots = []; let index = 0, effects = [];

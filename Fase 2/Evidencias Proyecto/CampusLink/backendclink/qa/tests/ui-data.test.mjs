@@ -15,6 +15,8 @@ test('limpieza UI se detiene ante otro campus, propietario o título',()=>{
 test('Storage se limpia solo en buckets y namespace exactos del recorrido',()=>{
  const m=newUIManifest(randomUUID(),'http://localhost:3011'),publication=randomUUID();
  const object={bucket_id:'publication-images',storage_path:`${m.campus}/${m.users[0].id}/${publication}/imagen.png`};assertUIStorage(m,[object]);
+ const deterministic=publication.slice(0,14)+'5'+publication.slice(15);
+ assertUIStorage(m,[{...object,storage_path:`${m.campus}/${m.users[0].id}/${deterministic}/imagen.png`}]);
  assert.throws(()=>assertUIStorage(m,[{...object,bucket_id:'private-personal'}]));
  assert.throws(()=>assertUIStorage(m,[{...object,storage_path:`${randomUUID()}/${m.users[0].id}/${publication}/imagen.png`}]));
  assert.throws(()=>assertUIStorage(m,[{...object,storage_path:`${m.campus}/${randomUUID()}/${publication}/imagen.png`}]));

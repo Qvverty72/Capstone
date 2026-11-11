@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { AuthApiError } from '@/lib/api/authenticated-request';
+import { operationId } from '@/lib/api/operation-id';
 import { addPhysicalgoodsPhoto, loadPublicationOptions, publishPhysicalgoods } from '../api/physicalgoodsApi';
 import { pickPublicationPhotos } from '../api/photoPicker';
 import type { PublicationCreated, PublicationInput, PublicationOptions, PublicationPhoto } from '../types/publication';
@@ -23,6 +24,7 @@ export function usePublishPhysicalgoods(onPublished: () => void) {
   const photo = photos[0];
   const queued = useRef<PublicationPhoto[]>([]), [remaining, setRemaining] = useState(0);
   const [created, setCreated] = useState<PublicationCreated | null>(null);
+  const attempt = useRef<{ payload: string; key: string } | null>(null);
   const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null), [revision, setRevision] = useState(0);
   const pending = useRef<AbortController | null>(null), mounted = useRef(true), saving = useRef(false);
@@ -74,9 +76,12 @@ export function usePublishPhysicalgoods(onPublished: () => void) {
     let publication = created;
     try {
       if (!publication) {
-        publication = await publishPhysicalgoods({ title, description, condition, categoryId, modality,
+        const input: PublicationInput = { title, description, condition, categoryId, modality,
         price: modality === 'VENTA' ? numericPrice : null, careerId: careerId || null, subjectId: subjectId || null,
-        photo: { name: photo.name, mimeType: photo.mimeType, base64: photo.base64 } }, abort.signal);
+        photo: { name: photo.name, mimeType: photo.mimeType, base64: photo.base64 } };
+        const payload = JSON.stringify(input);
+        if (attempt.current?.payload !== payload) attempt.current = { payload, key: operationId() };
+        publication = await publishPhysicalgoods(input, abort.signal, attempt.current.key);
         if (abort.signal.aborted) return;
         setCreated(publication); queued.current = photos.slice(1); setRemaining(queued.current.length); onPublished();
       }
@@ -95,6 +100,7 @@ export function usePublishPhysicalgoods(onPublished: () => void) {
   }
   function reset() {
     if (saving.current || picking.current) return;
+    attempt.current = null;
     setCreated(null); setTitle(''); setDescription(''); setCondition('BUEN_ESTADO'); setCategoryId('');
     setModality('VENTA'); setPrice(''); setCareerId(''); setSubjectId(''); setPhotos([]); queued.current = []; setRemaining(0); setError(null);
   }

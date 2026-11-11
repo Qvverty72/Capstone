@@ -10,7 +10,7 @@ export const DIGITAL_RECOMMENDATION_WEIGHTS=Object.freeze({career:30,subject:20,
 export async function getDigitalRecommendations(auth:VerifiedAuthConnection,raw:unknown) {
   authorizeDigitalAccess(auth);const page=digitalHistoryPage(raw);
   try{return await withPostgresTransaction(async client=>{
-    const {current,campus}=await currentDigitalContext(client,auth);
+    const {current,campus}=await currentDigitalContext(client,auth,'read');
     const ranks=await rankDigitalRecommendations(client,campus.institucion_id,current.userId,page,DIGITAL_RECOMMENDATION_WEIGHTS);
     if(!ranks.length)return createPaginatedResult([],page);
     const rows=await findDigitalPublications(client,campus.institucion_id,null,{q:'',careerId:null,subjectId:null,modality:null,page:1,offset:0,limit:ranks.length},current.userId,'available',ranks.map(row=>row.id));

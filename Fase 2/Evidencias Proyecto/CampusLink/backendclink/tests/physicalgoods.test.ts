@@ -134,6 +134,7 @@ before(async () => {
   ({ parsePhysicalgoods: parse } = await import('../src/modules/marketplace/physicalgoods/validators/physicalgoods.validation.js'));
   ({ closePostgres } = await import('../src/database/supabase/postgres.js'));
   await db.exec('create role anon; create role authenticated; create role service_role bypassrls; create schema auth; create table auth.users(id uuid primary key,email text);');
+  await db.exec('ALTER TABLE auth.users ADD COLUMN created_at timestamptz; CREATE VIEW public.campuslink_auth_directory WITH (security_barrier=true) AS SELECT id,email,created_at FROM auth.users');
   const schema = await readFile('src/database/supabase/migrations/CampusLink_Schema.sql', 'utf8');
   for (const name of ['institucion', 'campus', 'carrera', 'asignatura', 'campus_carrera', 'carrera_asignatura', 'perfil_usuario','usuario_carrera', 'rol', 'usuario_rol', 'permiso', 'usuario_permiso',
     'publicacion_recurso', 'categoria_recurso_fisico', 'recurso_fisico', 'archivo_publicacion', 'publicacion_carrera', 'publicacion_asignatura',
@@ -141,6 +142,7 @@ before(async () => {
     const sql = schema.match(new RegExp('CREATE TABLE public\\.' + name + ' \\([\\s\\S]*?\\n\\);'))?.[0];
     assert.ok(sql, name); await db.exec(sql);
   }
+  await db.exec(await readFile('src/database/supabase/migrations/20261110_publication_idempotency.sql','utf8'));
   await db.exec(await readFile('src/database/supabase/migrations/f2_4_05_edicion_fisica.sql','utf8'));
   await db.exec(await readFile('src/database/supabase/migrations/f2_4_06_mensajes_solicitud.sql','utf8'));
   // Restricción presente en la base real: una cancelación necesita motivo, actor y fecha.
@@ -187,6 +189,28 @@ const input = (overrides: Record<string, unknown> = {}) => ({ title: ' Calculado
   categoryId: category, modality: 'VENTA', price: 15000, careerId: career, subjectId: subject,
   photo: { name: 'principal.png', mimeType: 'image/png', base64: png }, ...overrides });
 const rows = (name: string) => db.query('select * from public.' + name + ' where ' + (name === 'publicacion_recurso' ? 'propietario_id' : 'publicacion_id') + '=$1', [auth.userId]);
+test('publication retry with the same key returns one physical resource and one stored photo', async () => {
+  const key = randomUUID(), first = await create(auth, input(), key), uploadCount = uploads.length;
+  const retry = await create(auth, input(), key); assert.deepEqual(retry, first); assert.equal(uploads.length, uploadCount);
+  assert.equal((await rows('publicacion_recurso')).rows.length, 1);
+});
+test('physical publication key cannot be reused with different terms or malformed input', async () => {
+  const key = randomUUID(); await create(auth, input(), key);
+  await assert.rejects(create(auth, input({ price: 16000 }), key), { status: 409 });
+  await assert.rejects(create(auth, input(), 'bad-key'), { status: 400 }); assert.equal(uploads.length, 1);
+});
+test('concurrent physical publication retries persist one resource and compensate the unused upload', async () => {
+  const key = randomUUID(), results = await Promise.all([create(auth, input(), key), create(auth, input(), key)]);
+  assert.equal(results[0].id, results[1].id); assert.equal((await rows('publicacion_recurso')).rows.length, 1);
+  assert.equal(uploads.length - removals.length, 1);
+});
+test('lost physical publication COMMIT response is recovered by the same operation key', async () => {
+  const key = randomUUID(); onUpload = async () => { lostCommit = true; };
+  await assert.rejects(create(auth, input(), key), { status: 503 }); lostCommit = false;
+  assert.equal((await rows('publicacion_recurso')).rows.length, 1);
+  const retry = await create(auth, input(), key); assert.ok(retry.id);
+  assert.equal((await rows('publicacion_recurso')).rows.length, 1); assert.equal(uploads.length, 1); assert.equal(removals.length, 0);
+});
 async function assertNoPublication() { assert.equal((await rows('publicacion_recurso')).rows.length, 0); }
 async function post(body: unknown, authorization = 'Bearer ' + token) {
   return originalFetch(base, { method: 'POST', headers: { Authorization: authorization, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });

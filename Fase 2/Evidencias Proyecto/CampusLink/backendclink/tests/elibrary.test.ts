@@ -98,6 +98,7 @@ before(async () => {
     const sql = schema.match(new RegExp('CREATE TABLE public\\.' + name + ' \\([\\s\\S]*?\\n\\);'))?.[0];
     assert.ok(sql, name); await db.exec(sql);
   }
+  await db.exec(await readFile('src/database/supabase/migrations/20261110_publication_idempotency.sql','utf8'));
   await db.exec(await readFile('src/database/supabase/migrations/f2_6_08_notificaciones.sql','utf8'));
   // Restricciones adicionales observadas en remoto, aún ausentes en el snapshot histórico.
   await db.exec(`ALTER TABLE campus ADD UNIQUE(id,institucion_id);
@@ -145,6 +146,29 @@ beforeEach(async () => {
 after(async () => { globalThis.fetch = originalFetch; await new Promise<void>(resolve => server.close(() => resolve())); await closePostgres(); mock.restoreAll(); await db.close(); });
 const input = (overrides: Record<string, unknown> = {}) => ({ title: ' Apuntes ', description: ' Material académico ', modality: 'VENTA', price: 2500, ...overrides });
 const file = (bytes = pdf) => ({ name: 'apuntes.pdf', mimeType: 'application/pdf', bytes });
+test('digital publication retry returns one resource without uploading its PDF again', async () => {
+  const key = randomUUID(), first = await service.createDigitalPublication(auth, input(), file(), key), count = uploads.length;
+  const retry = await service.createDigitalPublication(auth, input(), file(), key);
+  assert.equal(retry.id, first.id); assert.equal(uploads.length, count);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM public.publicacion_recurso WHERE propietario_id=$1', [auth.userId])).rows[0].n, 1);
+});
+test('digital publication key rejects changed metadata, changed bytes and malformed keys', async () => {
+  const key = randomUUID(); await service.createDigitalPublication(auth, input(), file(), key);
+  await assert.rejects(service.createDigitalPublication(auth, input({ price: 3000 }), file(), key), { status: 409 });
+  await assert.rejects(service.createDigitalPublication(auth, input(), await distinctFile(), key), { status: 409 });
+  await assert.rejects(service.createDigitalPublication(auth, input(), file(), 'bad-key'), { status: 400 }); assert.equal(uploads.length, 1);
+});
+test('concurrent digital publication retries leave one resource and one referenced PDF', async () => {
+  const key = randomUUID(), results = await Promise.all([service.createDigitalPublication(auth, input(), file(), key), service.createDigitalPublication(auth, input(), file(), key)]);
+  assert.equal(results[0].id, results[1].id); assert.equal(uploads.length - removals.length, 1);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM public.publicacion_recurso WHERE propietario_id=$1', [auth.userId])).rows[0].n, 1);
+});
+test('digital publication survives an ambiguous COMMIT and its subsequent keyed retry', async () => {
+  const key = randomUUID(); onUpload = async () => { lostCommit = true; };
+  const first = await service.createDigitalPublication(auth, input(), file(), key); lostCommit = false;
+  const retry = await service.createDigitalPublication(auth, input(), file(), key);
+  assert.equal(retry.id, first.id); assert.equal(uploads.length, 1); assert.equal(removals.length, 0);
+});
 async function distinctFile(title = randomUUID()) {
   const document = await PDFDocument.load(pdf); document.setTitle(title);
   return file(Buffer.from(await document.save({ useObjectStreams: false })));
@@ -375,7 +399,8 @@ test('unavailable reconciliation or failed removal keeps original safe and logs 
   failInsert = failReference = true; assert.equal((await post()).status, 503); await noPublication();
   assert.equal(objects.size, 1); assert.equal(removals.length, 0);
   failReference = false; failRemove = true; assert.equal((await post()).status, 503); await noPublication();
-  assert.equal(logs.length, 2); assert.doesNotMatch(JSON.stringify(logs), /password|storage_path|sb_secret|digital-resources/);
+  assert.equal(logs.filter(entry => entry[0] === 'Digital resource reconciliation required').length, 2);
+  assert.doesNotMatch(JSON.stringify(logs), /password|storage_path|sb_secret|digital-resources/);
 });
 test('migration is repeatable and restrictive Storage policy defeats future broad client policies', async () => {
   const migration = await readFile('src/database/supabase/migrations/f2_5_01_publicacion_digital.sql', 'utf8');

@@ -40,11 +40,11 @@ function digitalUploadPart(file: DigitalFile): Blob {
   };
   return part as unknown as Blob;
 }
-export function publishDigitalPublication(input: DigitalInput, file: DigitalFile, signal?: AbortSignal) {
+export function publishDigitalPublication(input: DigitalInput, file: DigitalFile, signal?: AbortSignal, operationKey?: string) {
   const body = new FormData();
   body.append('metadata', JSON.stringify(input));
   body.append('file', digitalUploadPart(file), file.name);
-  return authenticatedRequest<DigitalPublication>(base, { method: 'POST', body, signal });
+  return authenticatedRequest<DigitalPublication>(base, { method: 'POST', body, signal, ...(operationKey ? { headers: { 'Idempotency-Key': operationKey } } : {}) });
 }
 export function attachDigitalFile(publicationId: string, file: DigitalFile, signal?: AbortSignal) {
   const body = new FormData();

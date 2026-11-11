@@ -92,7 +92,7 @@ export const downloadDigitalFileController: DigitalHandler = async (request, res
 export const createDigitalController: DigitalHandler = async (request, response) => {
   authorizeDigitalAccess(response.locals.auth);
   const { metadata, file } = await readDigitalUpload(request);
-  sendSuccess(response, await createDigitalPublication(response.locals.auth, metadata, file), 201);
+  sendSuccess(response, await createDigitalPublication(response.locals.auth, metadata, file, request.get('Idempotency-Key')), 201);
 };
 export const listDigitalController: DigitalHandler = async (request, response) => {
   const result = await searchDigitalPublications(response.locals.auth, request.query);

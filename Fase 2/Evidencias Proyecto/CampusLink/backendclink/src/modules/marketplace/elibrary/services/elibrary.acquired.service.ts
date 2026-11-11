@@ -9,7 +9,7 @@ import { findDigitalPublications,findOwnedDigitalActivity } from '../repositorie
 async function getPrivateDigitalResources(auth:VerifiedAuthConnection,query:unknown,rawId:unknown,scope:'acquired'|'owned') {
   authorizeDigitalAccess(auth);const pagination=digitalHistoryPage(query),id=rawId===undefined?null:digitalId(rawId);
   try{return await withPostgresTransaction(async client=>{
-    const {current,campus}=await currentDigitalContext(client,auth);
+    const {current,campus}=await currentDigitalContext(client,auth,'read');
     const filters={...pagination,q:'',careerId:null,subjectId:null,modality:null};
     const rows=await findDigitalPublications(client,campus.institucion_id,id,filters,current.userId,scope);
     if(id&&!rows.length)throw new ApiError(404,'NOT_FOUND','No se encontró un material adquirido autorizado.');

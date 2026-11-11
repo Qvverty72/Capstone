@@ -8,6 +8,7 @@ import ts from 'typescript';
 
 class AuthApiError extends Error { constructor(status) { super(); this.status = status; } }
 function load(sourcePath, dependencies) {
+  dependencies = { '@/lib/api/operation-id': { operationId: () => crypto.randomUUID() }, ...dependencies };
   const source = fs.readFileSync(new URL(sourcePath, import.meta.url), 'utf8');
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const module = { exports: {} };

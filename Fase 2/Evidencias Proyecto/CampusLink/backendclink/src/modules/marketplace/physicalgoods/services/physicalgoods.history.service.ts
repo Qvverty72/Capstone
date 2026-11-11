@@ -15,7 +15,7 @@ export async function withPhysicalgoodsHistory<T>(auth:VerifiedAuthConnection,op
   requireCampusCapability(auth,auth.campusId,'general');
   try {
     return await withPhysicalgoodsTransaction(async client=>{
-      const {profile,roles}=await lockPhysicalgoodsPublisher(client,auth.userId);
+      const {profile,roles}=await lockPhysicalgoodsPublisher(client,auth.userId,'read');
       if(!profile||profile.campus_id!==auth.campusId||profile.institucion_id!==auth.profile.institucion_id)throw new ApiError(409,'CONFLICT','Tu contexto cambió. Actualiza el historial.');
       const current={...auth,profile,roles,campusId:profile.campus_id};
       requireCampusCapability(current,current.campusId,'general');

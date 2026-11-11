@@ -24,7 +24,7 @@ export async function searchDigitalPublications(auth: VerifiedAuthConnection, qu
   authorizeDigitalAccess(auth); const filters = parseDigitalSearch(query);
   try {
     return await withPostgresTransaction(async client => {
-      const { campus } = await currentDigitalContext(client, auth);
+      const { campus } = await currentDigitalContext(client, auth, 'read');
       return createPaginatedResult(await findDigitalPublications(client, campus.institucion_id, null, filters, auth.userId), filters);
     });
   } catch (error) { if (error instanceof ApiError) throw error; throw new ApiError(503,'DEPENDENCY_UNAVAILABLE','No se pudo consultar la biblioteca.'); }

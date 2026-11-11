@@ -19,7 +19,7 @@ export async function getDigitalMessages(auth: VerifiedAuthConnection, id: unkno
     const result = createPaginatedResult(await resourceCoordinationMessages(client, resource.id, trade.id,
       [trade.propietario_id, trade.receptor_id], page), page);
     return { ...result, data: result.data.map(row => messageDto(row, trade)) };
-  }, { tradeId });
+  }, { tradeId, readOnly: true });
 }
 export async function sendDigitalMessage(auth: VerifiedAuthConnection, id: unknown, rawTrade: unknown, raw: unknown) {
   const body = digitalAction(raw, ['text', 'messageId']), tradeId = digitalId(rawTrade, 'transactionId');

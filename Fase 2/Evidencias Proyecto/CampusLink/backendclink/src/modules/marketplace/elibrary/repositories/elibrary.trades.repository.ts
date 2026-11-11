@@ -9,8 +9,8 @@ export async function digitalTradeParticipants(client: PoolClient, id: string, i
     LEFT JOIN public.transaccion_recurso t ON t.publicacion_id=p.id AND t.id=$4
     WHERE p.id=$1 AND c.institucion_id=$2 AND p.tipo_recurso='DIGITAL'`,[id,institutionId,requestId,tradeId])).rows[0] ?? null;
 }
-export async function lockDigitalProfiles(client: PoolClient, ids: string[]) {
-  await client.query('SELECT id FROM public.perfil_usuario WHERE id=ANY($1::uuid[]) ORDER BY id FOR NO KEY UPDATE',[ids]);
+export async function lockDigitalProfiles(client: PoolClient, ids: string[], readOnly = false) {
+  await client.query(`SELECT id FROM public.perfil_usuario WHERE id=ANY($1::uuid[]) ORDER BY id ${readOnly?'FOR SHARE':'FOR NO KEY UPDATE'}`,[ids]);
 }
 export async function digitalMembersEnabled(client: PoolClient, ids: string[], institutionId: string) {
   const rows = (await client.query<{id:string}>(`SELECT p.id FROM public.perfil_usuario p JOIN public.campus c ON c.id=p.campus_id AND c.institucion_id=p.institucion_id

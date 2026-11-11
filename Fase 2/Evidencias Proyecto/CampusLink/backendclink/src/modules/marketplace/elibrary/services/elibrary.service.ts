@@ -2,6 +2,7 @@ import { createModuleHealthCheck } from '../../../../shared/health/module-health
 import { probeElibraryDependencies } from '../repositories/elibrary.repository.js';
 import type { ElibraryHealth } from '../types/elibrary.types.js';
 import { randomUUID } from 'node:crypto';
+import { publicationOperation, previousPublication, recordPublicationOperation } from '../../../../database/supabase/publication-operation.js';
 import type { PoolClient } from 'pg';
 import { ApiError } from '../../../../shared/errors/api-error.js';
 import { assertPublicContent } from '../../../../shared/moderation/content-moderation.js';
@@ -19,8 +20,8 @@ const unavailable = () => new ApiError(503, 'DEPENDENCY_UNAVAILABLE', 'No se pud
 export function authorizeDigitalAccess(auth: VerifiedAuthConnection) {
   requireCampusCapability(auth, auth.campusId, 'general');
 }
-export async function currentDigitalContext(client: PoolClient, auth: VerifiedAuthConnection) {
-  const { profile, roles } = await lockAccountContext(client, auth.userId);
+export async function currentDigitalContext(client: PoolClient, auth: VerifiedAuthConnection, mode: 'read' | 'write' = 'write') {
+  const { profile, roles } = await lockAccountContext(client, auth.userId, mode);
   if (!profile || profile.campus_id !== auth.campusId || profile.institucion_id !== auth.profile.institucion_id) {
     throw new ApiError(409, 'CONFLICT', 'Tu contexto institucional cambió. Recarga la biblioteca.');
   }
@@ -32,11 +33,24 @@ export async function currentDigitalContext(client: PoolClient, auth: VerifiedAu
   }
   return { current, campus };
 }
-export async function createDigitalPublication(auth: VerifiedAuthConnection, raw: unknown, upload?: DigitalUpload): Promise<DigitalPublication> {
+export async function createDigitalPublication(auth: VerifiedAuthConnection, raw: unknown, upload?: DigitalUpload, operationKey?: unknown): Promise<DigitalPublication> {
   requireCampusCapability(auth, auth.campusId, 'general');
   const input = parseDigitalInput(raw);
   assertPublicContent({ title: input.title, description: input.description });
   const file = await validateDigitalFile(upload);
+  const operation = publicationOperation('DIGITAL', auth.userId, auth.campusId, operationKey, { input, name: file.name }, file.bytes);
+  if (operation) {
+    try {
+      const previous = await withPostgresTransaction(async client => {
+        const { campus } = await currentDigitalContext(client, auth);
+        if (!await previousPublication(client, operation)) return null;
+        const result = (await findDigitalPublications(client, campus.institucion_id, operation.id))[0];
+        if (!result) throw new ApiError(409, 'CONFLICT', 'La publicación original ya no está disponible.');
+        return result;
+      });
+      if (previous) return previous;
+    } catch (error) { if (error instanceof ApiError) throw error; throw unavailable(); }
+  }
   // Rechaza selecciones inválidas antes de cargar bytes; se comprueban de nuevo tras Storage.
   if (input.careerIds.length || input.subjectIds.length) {
     try {
@@ -46,21 +60,33 @@ export async function createDigitalPublication(auth: VerifiedAuthConnection, raw
       });
     } catch (error) { if (error instanceof ApiError) throw error; throw unavailable(); }
   }
-  const id = randomUUID(), path = `${auth.campusId}/${auth.userId}/${id}/${randomUUID()}.pdf`;
+  const id = operation?.id ?? randomUUID(), path = `${auth.campusId}/${auth.userId}/${id}/${randomUUID()}.pdf`;
   let persistenceAttempted = false, saved: DigitalPublication | undefined;
   try {
     await uploadDigitalFile(path, file);
     persistenceAttempted = true;
-    return await withPostgresTransaction(async client => {
+    let replay = false;
+    const result = await withPostgresTransaction(async client => {
       const { current, campus } = await currentDigitalContext(client, auth);
+      if (await previousPublication(client, operation, true)) {
+        replay = true;
+        const previous = (await findDigitalPublications(client, campus.institucion_id, id))[0];
+        if (!previous) throw new ApiError(409, 'CONFLICT', 'La publicación original ya no está disponible.');
+        return previous;
+      }
       await lockDigitalPersistence(client, id);
       validateDigitalAcademics(input, await findDigitalAcademicCatalog(client, campus.institucion_id));
       await insertDigitalPublication(client, { ...input, id, ownerId: current.userId, campusId: campus.id }, file, path);
+      await recordPublicationOperation(client, operation);
       await replaceDigitalAcademics(client, id, input.careerIds, input.subjectIds);
       saved = (await findDigitalPublications(client, campus.institucion_id, id))[0];
       await auditDigitalAcademics(client, current, null, saved);
       return saved;
     });
+    if (replay) {
+      try { await removeDigitalFile(path); } catch { console.error('Digital retry upload cleanup unavailable'); }
+    }
+    return result;
   } catch (error) {
     try {
       const referenced = persistenceAttempted && await digitalFileHasReference(id, path);
@@ -76,7 +102,7 @@ export async function getDigitalPublications(auth: VerifiedAuthConnection, publi
   const id = publicationId === undefined ? null : digitalId(publicationId);
   try {
     return await withPostgresTransaction(async client => {
-      const { campus } = await currentDigitalContext(client, auth);
+      const { campus } = await currentDigitalContext(client, auth, 'read');
       const publications = await findDigitalPublications(client, campus.institucion_id, id, undefined, auth.userId);
       if (id && !publications.length) throw new ApiError(404, 'NOT_FOUND', 'La publicación no está disponible en tu institución.');
       if (id) {

@@ -21,7 +21,7 @@ export async function getDigitalActivity(auth:VerifiedAuthConnection,raw:unknown
  if(query.tab!==undefined&&(typeof query.tab!=='string'||!tabs.includes(query.tab)))throw new ApiError(400,'VALIDATION_ERROR','Revisa el filtro.');
  const resourceId=query.resourceId===undefined?null:digitalId(query.resourceId),id=rawId===undefined?null:digitalId(rawId);
  try{return await withPostgresTransaction(async client=>{
-   const {current,campus}=await currentDigitalContext(client,auth),institutionId=campus.institucion_id;
+   const {current,campus}=await currentDigitalContext(client,auth,'read'),institutionId=campus.institucion_id;
    const wrap=<T>(data:T[],total:number,extra={})=>({data,meta:{page:page.page,limit:page.limit,hasMore:page.offset+data.length<total,total,...extra}});
    if(kind==='counts')return activityCounts(client,institutionId,current.userId);
    if(kind==='requests'){

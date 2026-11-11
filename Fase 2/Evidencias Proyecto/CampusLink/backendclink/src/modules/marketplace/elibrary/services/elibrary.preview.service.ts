@@ -10,8 +10,8 @@ import { extractDigitalPreview } from '../files/elibrary.preview.extractor.js';
 export async function getDigitalPreview(auth: VerifiedAuthConnection, rawId: unknown, rawFileId: unknown) {
   authorizeDigitalAccess(auth); const id = digitalId(rawId), fileId = digitalId(rawFileId,'fileId');
   const check = () => withPostgresTransaction(async client => {
-    const { campus } = await currentDigitalContext(client,auth);
-    const resource = await findDigitalResource(client,id,campus.institucion_id);
+    const { campus } = await currentDigitalContext(client,auth,'read');
+    const resource = await findDigitalResource(client,id,campus.institucion_id,true);
     if (!resource || resource.deleted_at || resource.estado_publicacion !== 'DISPONIBLE') throw new ApiError(404,'NOT_FOUND','La publicación no está disponible.');
     const file = await findDigitalFile(client,id,fileId); assertStoredDigitalFile(resource,file); return file;
   });

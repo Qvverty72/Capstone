@@ -14,9 +14,9 @@ import type { DigitalAttachment, DigitalResourceRow, DigitalStoredFile, DigitalU
 const unavailable = () => new ApiError(503, 'DEPENDENCY_UNAVAILABLE', 'No se pudo completar la operación del archivo.');
 const notFound = () => new ApiError(404, 'NOT_FOUND', 'El recurso o archivo no está disponible en tu institución.');
 async function contextForFile(client: PoolClient, auth: VerifiedAuthConnection, id: string, writing = false) {
-  const { current, campus } = await currentDigitalContext(client, auth);
+  const { current, campus } = await currentDigitalContext(client, auth, writing?'write':'read');
   if (writing) await lockDigitalPersistence(client,id);
-  const resource = await findDigitalResource(client, id, campus.institucion_id);
+  const resource = await findDigitalResource(client, id, campus.institucion_id, !writing);
   if (!resource) throw notFound();
   return { current, resource };
 }
