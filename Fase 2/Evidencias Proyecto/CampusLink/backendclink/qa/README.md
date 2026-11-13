@@ -1,5 +1,12 @@
 # Seeder general de QA
 
+Para la presentación institucional del 16 de noviembre de 2026 usar
+[`demo/README.md`](demo/README.md). Ese piloto reutiliza Duoc UC / San Andrés y
+limita la carga a 8 perfiles, 6 actividades, 6 físicos y 5 digitales.
+El seeder general de esta página conserva su finalidad técnica de QA y su matriz
+de aislamiento/paginación; **no ejecutarlo para preparar la presentación ni usar
+su comando `clean` para retirar contenido del campus institucional**.
+
 Datos ficticios para probar las funcionalidades **existentes**, en las conexiones
 Supabase/PostgreSQL, Auth, Storage y MongoDB configuradas en `backendclink/.env`.
 No instala infraestructura, ejecuta migraciones ni modifica reglas del producto.
