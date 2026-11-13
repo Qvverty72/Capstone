@@ -32,14 +32,14 @@ Capstone/
     ├── Evidencias Individuales/
     └── Evidencias Proyecto/
       └── Evidencias de Documentacion/
-        └── Diagramas UML/
-        └── Documentación de arquitectura/
-        └── Documentación de RNF/
-        └── Documentación de despliegue/
-        └── Documentación de pruebas/
+        ├── Diagramas UML/
+        ├── Documentación de arquitectura/
+        ├── Documentación de RNF/
+        ├── Documentación de despliegue/
+        ├── Documentación de pruebas/
         └── Evidencias Marco Ágil/   
       └── Evidencias de Sistema/
-        └── Base de datos/     
+        ├── Base de datos/     
         └── CampusLink/
             ├── frontendclink/
             ├── backendclink/
