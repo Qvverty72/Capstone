@@ -6,7 +6,7 @@ Este repositorio contiene **los entregables académicos y el código fuente del 
 
 ## Estado del proyecto
 
-El proyecto continúa en desarrollo e integración durante la **Fase 2**, con metodología **Scrum**. La documentación y evidencias de la Fase 1 se conservan para consulta. Ya existen pantallas, servicios y pruebas para los principales módulos; su presencia en el código no significa que todos los recorridos estén validados en producción o en cada plataforma.
+El proyecto se encuentra en la etapa final de la **Fase 2**, desarrollada bajo la metodología **Scrum**, con los principales módulos implementados e integrados, junto con sus respectivas pruebas y evidencias documentales. Actualmente, el equipo está finalizando los últimos ajustes y se encuentra a la espera de retroalimentación para la **evaluación final de la fase 2 programada para el 16 de noviembre de 2026**, instancia que permitirá revisar los avances, validar los resultados obtenidos e identificar posibles mejoras antes de dar por concluida esta fase.
 
 | Módulo | Alcance presente en el código |
 | --- | --- |
