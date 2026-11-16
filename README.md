@@ -6,7 +6,7 @@ Este repositorio contiene **los entregables académicos y el código fuente del 
 
 ## Estado del proyecto
 
-El proyecto se encuentra en la etapa final de la **Fase 2**, desarrollada bajo la metodología **Scrum**, con los principales módulos implementados e integrados, junto con sus respectivas pruebas y evidencias documentales. Actualmente, el equipo está finalizando los últimos ajustes y se encuentra a la espera de retroalimentación para la **evaluación final de la fase 2 programada para el 16 de noviembre de 2026**, instancia que permitirá revisar los avances, validar los resultados obtenidos e identificar posibles mejoras antes de dar por concluida esta fase.
+El proyecto se encuentra en la etapa final de la **Fase 2**, desarrollada bajo la metodología **Scrum**, con los principales módulos implementados e integrados, junto con sus respectivas pruebas y evidencias documentales, el detalle de las tareas en su backlog se puede ver en el siguiente enlace [Backlog CampusLink](https://github.com/users/Qvverty72/projects/3/views/1). Actualmente, el equipo está finalizando los últimos ajustes y se encuentra a la espera de retroalimentación para la **evaluación final de la fase 2 programada para el 16 de noviembre de 2026**, instancia que permitirá revisar los avances, validar los resultados obtenidos e identificar posibles mejoras antes de dar por concluida esta fase.
 
 | Módulo | Alcance presente en el código |
 | --- | --- |
